@@ -71,6 +71,5 @@ async def get_current_user(
             user.is_admin = True
             db.commit()
             db.refresh(user)
-    
     return user
 

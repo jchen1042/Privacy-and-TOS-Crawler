@@ -19,8 +19,10 @@ class Settings(BaseSettings):
     # Database - override via environment variable in production
     DATABASE_URL: str = "postgresql://user:password@localhost:5432/tos_crawler"
     
+
     # Redis
-    REDIS_URL: str = "redis://localhost:6379"
+    #REDIS_URL: str = "redis://localhost:6379"
+    REDIS_URL: str = ""
     
     # Firebase Admin SDK
     FIREBASE_PROJECT_ID: str = ""

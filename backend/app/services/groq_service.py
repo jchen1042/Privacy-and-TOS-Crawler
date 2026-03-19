@@ -10,7 +10,6 @@ from app.services.cache_service import get_cache, set_cache
 
 logger = logging.getLogger(__name__)
 
-
 class GroqService:
     """Service for analyzing documents with Groq API (Llama model)"""
     
