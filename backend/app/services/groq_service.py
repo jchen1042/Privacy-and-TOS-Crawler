@@ -6,6 +6,7 @@ import logging
 import json
 import re
 import hashlib
+import asyncio
 from app.services.cache_service import get_cache, set_cache
 
 logger = logging.getLogger(__name__)
@@ -60,35 +61,50 @@ class GroqService:
             # Prepare prompt
             prompt = self._create_analysis_prompt(text, url, doc_type)
             
-            # Call Groq API
-            chat_completion = self.client.chat.completions.create(
-                model=self.MODEL,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a legal document analyst. Always respond with valid JSON only, no markdown formatting."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=0.3,  # Lower temperature for more consistent JSON output
-                max_tokens=2000,
-                response_format={"type": "json_object"}  # Force JSON output
-            )
+            # Retry logic
+            max_retries = 5
+            last_exception = None
             
-            # Get response
-            response_text = chat_completion.choices[0].message.content
+            for attempt in range(max_retries):
+                try:
+                    # Call Groq API
+                    chat_completion = self.client.chat.completions.create(
+                        model=self.MODEL,
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": "You are a legal document analyst. Always respond with valid JSON only, no markdown formatting."
+                            },
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
+                        temperature=0.3,  # Lower temperature for more consistent JSON output
+                        max_tokens=2000,
+                        response_format={"type": "json_object"}  # Force JSON output
+                    )
+                    
+                    # Get response
+                    response_text = chat_completion.choices[0].message.content
+                    
+                    # Parse response
+                    result = self._parse_response(response_text, text)
+                    
+                    # Store in cache (30 days)
+                    set_cache(cache_key, result, ttl=2592000)
+                    
+                    logger.info(f"Successfully analyzed and cached document {url} with Groq")
+                    return result
+                except Exception as e:
+                    last_exception = e
+                    logger.warning(f"Groq API attempt {attempt + 1}/{max_retries} failed: {e}")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(2 * (attempt + 1))  # Backoff: 2s, 4s
             
-            # Parse response
-            result = self._parse_response(response_text, text)
-            
-            # Store in cache (30 days)
-            set_cache(cache_key, result, ttl=2592000)
-            
-            logger.info(f"Successfully analyzed and cached document {url} with Groq")
-            return result
+            # If all attempts fail, raise the last exception
+            if last_exception:
+                raise last_exception
             
         except Exception as e:
             logger.error(f"Error analyzing document with Groq: {e}")

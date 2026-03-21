@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:3000, http://127.0.0.1:3000, https://privacy-and-tos-crawler.vercel.app/"
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 10
@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     
     # Admin Configuration
-    ADMIN_EMAILS: str = ""  # Comma-separated list of admin emails
+    ADMIN_EMAILS: str = "jchen23@umbc.edu"  # Comma-separated list of admin emails
     
     class Config:
         env_file = ".env"
