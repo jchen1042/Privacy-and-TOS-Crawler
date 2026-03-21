@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000, http://127.0.0.1:3000, https://privacy-and-tos-crawler.vercel.app/"
+    CORS_ORIGINS: str = "http://localhost:3000, http://127.0.0.1:3000, https://privacy-and-tos-crawler.vercel.app"
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 10
