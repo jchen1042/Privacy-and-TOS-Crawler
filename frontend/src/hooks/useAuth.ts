@@ -33,29 +33,25 @@ export const useAuth = (): AuthState & AuthActions => {
   const [error, setError] = useState<string | null>(null)
 
   // Fetch user profile from Firestore when user changes
+  // Optimized useEffect to skip Firestore lookups
   useEffect(() => {
-    const fetchUserProfile = async (uid: string) => {
-      try {
-        const result = await AuthService.getUserProfile(uid)
-        if (result.success && result.profile) {
-          setUserProfile(result.profile as UserProfile)
-        } else {
-          // If profile doesn't exist, create a basic one from Firebase user
-          setUserProfile(null)
-        }
-      } catch (error) {
-        console.error('Error fetching user profile:', error)
-        setUserProfile(null)
-      }
-    }
-
-    const unsubscribe = AuthService.onAuthStateChanged(async (user) => {
+    const unsubscribe = AuthService.onAuthStateChanged((user) => {
       setUser(user)
+      
       if (user) {
-        await fetchUserProfile(user.uid)
+        // Instead of calling fetchUserProfile (Firestore), 
+        // we construct a profile object directly from the Auth data.
+        // This satisfies the UI's need for a 'userProfile' instantly.
+        setUserProfile({
+          uid: user.uid,
+          email: user.email || '',
+          displayName: user.displayName || user.email?.split('@')[0] || 'User',
+          username: user.displayName || user.email?.split('@')[0] || 'User',
+        })
       } else {
         setUserProfile(null)
       }
+      
       setLoading(false)
     })
 
