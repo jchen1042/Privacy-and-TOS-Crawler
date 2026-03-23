@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     # Groq API (primary analysis service)
     GROQ_API_KEY: str = ""
     
-    # CORS
-    CORS_ORIGINS: str = "http://localhost:3000, http://127.0.0.1:3000, https://privacy-and-tos-crawler.vercel.app"
+    # CORS (**IMPORTANT**: If you host the frontend and backend on different domains, you MUST add the frontend URL(s) to avoid CORS issues. For local development, use http://localhost:3000)
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,https://privacy-and-tos-crawler.vercel.app,privacy-and-tos-crawler-git-main-jchen1042s-projects.vercel.app, "
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 10
