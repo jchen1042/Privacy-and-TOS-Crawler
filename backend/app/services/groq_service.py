@@ -111,6 +111,64 @@ class GroqService:
             # Re-raise exception - let caller handle fallback
             raise
     
+    async def compare_documents(
+        self,
+        old_text: str,
+        new_text: str,
+        doc_type: str
+    ) -> Dict[str, Any]:
+        """
+        Compare two versions of a document using Groq API to identify changes and risks
+        """
+        try:
+            # Generate cache key from hashes of both documents
+            old_hash = hashlib.md5(old_text.encode()).hexdigest()
+            new_hash = hashlib.md5(new_text.encode()).hexdigest()
+            cache_key = f"comparison:{doc_type}:{old_hash}:{new_hash}"
+
+            # Check cache
+            cached_result = get_cache(cache_key)
+            if cached_result:
+                logger.info(f"Cache HIT for comparison {cache_key}")
+                return cached_result
+
+            logger.info(f"Analyzing changes between versions for {doc_type}...")
+
+            prompt = self._create_comparison_prompt(old_text, new_text, doc_type)
+
+            # Reuse retry logic
+            max_retries = 3
+            last_exception = None
+
+            for attempt in range(max_retries):
+                try:
+                    chat_completion = self.client.chat.completions.create(
+                        model=self.MODEL,
+                        messages=[
+                            {"role": "system", "content": "You are a legal document analyst. specialized in tracking changes in contracts. Always respond with valid JSON only."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.2,
+                        max_tokens=2000,
+                        response_format={"type": "json_object"}
+                    )
+                    response_text = chat_completion.choices[0].message.content
+                    result = self._parse_comparison_response(response_text)
+                    
+                    set_cache(cache_key, result, ttl=settings.CACHE_TTL_COMPARISON)
+                    return result
+                except Exception as e:
+                    last_exception = e
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(2 * (attempt + 1))
+            
+            if last_exception:
+                raise last_exception
+
+        except Exception as e:
+            logger.error(f"Error comparing documents: {e}")
+            raise
+
     def _create_analysis_prompt(self, text: str, url: str, doc_type: str) -> str:
         """Create analysis prompt for Groq"""
         # Limit text to 50K chars
@@ -147,6 +205,30 @@ IMPORTANT: Respond with ONLY a JSON object (no markdown, no code blocks, no expl
 Document Text:
 {text_preview}"""
         return prompt
+
+    def _create_comparison_prompt(self, old_text: str, new_text: str, doc_type: str) -> str:
+        """Create prompt for comparing two document versions"""
+        # Use smaller context window for comparison to ensure both fit
+        limit = 15000
+        old_preview = old_text[:limit]
+        new_preview = new_text[:limit]
+
+        return f"""Compare the following two versions of a {doc_type} and identify significant legal or privacy changes.
+
+OLD VERSION (Truncated):
+{old_preview}
+
+NEW VERSION (Truncated):
+{new_preview}
+
+IMPORTANT: Respond with ONLY a JSON object with this structure:
+{{
+    "summary_of_changes": "Concise summary of what changed...",
+    "risk_level_of_changes": "LOW" | "MEDIUM" | "HIGH",
+    "key_changes": [
+        {{ "category": "Data Collection"|"User Rights"|"Other", "description": "...", "impact": "..." }}
+    ]
+}}"""
     
     def _parse_response(self, response_text: str, original_text: str) -> Dict[str, Any]:
         """Parse Groq response into structured format"""
@@ -190,6 +272,23 @@ Document Text:
             # Try regex extraction as fallback
             return self._regex_parse_response(response_text, original_text)
     
+    def _parse_comparison_response(self, response_text: str) -> Dict[str, Any]:
+        """Parse comparison response"""
+        try:
+            text = response_text.strip()
+            if text.startswith("```json"): text = text[7:]
+            if text.startswith("```"): text = text[3:]
+            if text.endswith("```"): text = text[:-3]
+            
+            return json.loads(text.strip())
+        except json.JSONDecodeError:
+            logger.error("Failed to parse comparison JSON")
+            return {
+                "summary_of_changes": "Analysis failed to parse.",
+                "risk_level_of_changes": "UNKNOWN",
+                "key_changes": []
+            }
+
     def _regex_parse_response(self, response_text: str, original_text: str) -> Dict[str, Any]:
         """Fallback regex parsing if JSON parsing fails"""
         # Calculate basic stats from original text

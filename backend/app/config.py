@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     
     # Cache TTL (seconds)
     CACHE_TTL_ANALYSIS: int = 2592000  # 30 days
+    CACHE_TTL_COMPARISON: int = 2592000  # 30 days, time to store comparison results
     CACHE_TTL_FAVORITES: int = 3600    # 1 hour
     CACHE_TTL_SESSION: int = 86400     # 1 day
     
@@ -68,4 +69,3 @@ settings = Settings()
 
 # Get CORS origins list
 CORS_ORIGINS = get_cors_origins(settings.CORS_ORIGINS)
-
