@@ -225,58 +225,35 @@ class CrawlerService:
     
     async def _process_single_document(self, url: str, doc_type: str) -> Optional[Dict]:
         """
-        Process a single document
-        
-        Args:
-            url: Document URL
-            doc_type: Type of document
-        
-        Returns:
-            Document dictionary or None if invalid
+        Process a single document. 
+        Note: This returns a dictionary that should be passed to GlobalDocumentService.
         """
         try:
-            # Fetch document
             html_content, page_title = await self._fetch_page(url)
             
-            # Parse HTML
             soup = parse_html(html_content)
             soup = clean_html(soup)
-            
-            # Extract text
             text = extract_text(soup)
             
-            # Validate document
             if not is_valid_document(text):
-                logger.warning(f"Invalid document at {url}")
+                logger.warning(f"Invalid document content at {url}")
                 return None
             
-            # Calculate hash
             text_hash = calculate_text_hash(text)
-            
-            # Count words
             word_count = count_words(text)
             
+            # This dict now contains everything needed for BOTH Global and Local tables
             return {
                 'url': url,
                 'document_type': doc_type,
-                'title': page_title,
-                'text': text,
-                'text_hash': text_hash,
+                'title': page_title or doc_type.replace('_', ' ').title(),
+                'raw_text': text,         # For GlobalDocument/Version
+                'text_hash': text_hash,   # For change detection
                 'word_count': word_count,
             }
             
         except Exception as e:
-            error_type = type(e).__name__
-            error_msg = str(e)
-            logger.error(f"Error processing document {url} (type: {doc_type})")
-            logger.error(f"  Error Type: {error_type}")
-            logger.error(f"  Error Message: {error_msg}")
-            logger.error(f"  Error Details: {repr(e)}")
-            
-            # Log traceback for processing errors
-            import traceback
-            logger.error(f"  Traceback: {traceback.format_exc()}")
-            
+            logger.error(f"Error processing document {url}: {str(e)}")
             return None
     
     def _normalize_url(self, url: str) -> str:

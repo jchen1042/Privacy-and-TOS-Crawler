@@ -23,6 +23,7 @@ from app.services.global_document_service import GlobalDocumentService
 from app.services.global_analysis_service import GlobalAnalysisService
 from app.utils.url_normalizer import normalize_crawl_url
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
 import asyncio
 import logging
 
@@ -81,20 +82,16 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
             
             # Use cached documents
             for cached_doc in cached_docs:
-                print(f"Using cached document: {cached_doc.document_url} (type: {cached_doc.document_type}, hash: {cached_doc.text_hash[:8]}...)")
-                # Create user-specific document from cached data
                 document = Document(
                     user_id=user_id,
                     session_id=session_id,
+                    global_document_id=cached_doc.id,  # <--- LINK TO GLOBAL
                     url=cached_doc.document_url,
                     document_type=cached_doc.document_type,
-                    title=cached_doc.title,
-                    raw_text=cached_doc.raw_text,
-                    text_hash=cached_doc.text_hash,
-                    word_count=cached_doc.word_count
+                    title=cached_doc.title,  
                 )
                 db.add(document)
-                db.flush()  # Get document ID
+                db.flush()
                 
                 # Store global document reference for analysis lookup
                 global_documents_map[cached_doc.document_url] = cached_doc
@@ -132,7 +129,7 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
                             db=db,
                             document_url=doc['url'],
                             document_type=doc['document_type'],
-                            raw_text=doc['text'],
+                            raw_text=doc['raw_text'],
                             base_url=original_base_url,  # Use original crawl URL's base
                             title=doc.get('title'),
                             word_count=doc['word_count']
@@ -154,9 +151,8 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
                                 doc_type=global_doc.document_type
                             )
                             logger.info(f"Change analysis for {doc['url']}: {change_analysis}")
-                            # TODO: Store this `change_analysis` in a new `DocumentVersion` table.
                             document_version = DocumentVersion(
-                                document_id=global_doc.id,
+                                global_document_id=global_doc.id, # Ensure field name matches model
                                 raw_text=global_doc.raw_text,
                                 text_hash=global_doc.text_hash,
                                 word_count=global_doc.word_count,
@@ -175,12 +171,10 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
                     document = Document(
                         user_id=user_id,
                         session_id=session_id,
+                        global_document_id=global_doc.id, # CRITICAL: Link to Global
                         url=doc['url'],
                         document_type=doc['document_type'],
-                        title=doc.get('title'),
-                        raw_text=doc['text'],
-                        text_hash=doc['text_hash'],
-                        word_count=doc['word_count']
+                        title=doc.get('title')
                     )
                     db.add(document)
                     db.flush()  # Get document ID
@@ -189,7 +183,7 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
                     documents_to_analyze.append({
                         'document': document,
                         'global_document': global_doc,
-                        'text': doc['text'],
+                        'text': doc['raw_text'],
                         'url': doc['url'],
                         'doc_type': doc['document_type'],
                         'text_hash': doc['text_hash'],
@@ -522,22 +516,29 @@ async def get_session_results(
         )
     
     # Get all documents for this session
-    documents = db.query(Document).filter(
+    # Optimized query with joinedload
+    documents = db.query(Document).options(
+        joinedload(Document.global_document),
+        joinedload(Document.analysis)
+    ).filter(
         Document.session_id == session_id,
         Document.user_id == current_user.id
     ).all()
     
-    # Build document responses with analyses
     document_responses = []
     for doc in documents:
         analysis = doc.analysis
+        # Safely extract global data
+        g_doc = doc.global_document
+        
         document_responses.append(
             DocumentAnalysisResponse(
                 document_id=doc.id,
                 url=doc.url,
                 document_type=doc.document_type,
                 title=doc.title,
-                word_count=doc.word_count,
+                # Safe access to global data
+                word_count=g_doc.word_count if g_doc else 0,
                 created_at=doc.created_at,
                 analysis=AnalysisResponse(
                     id=analysis.id,
