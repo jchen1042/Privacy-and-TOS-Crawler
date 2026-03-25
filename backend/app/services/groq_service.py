@@ -62,7 +62,7 @@ class GroqService:
             prompt = self._create_analysis_prompt(text, url, doc_type)
             
             # Retry logic
-            max_retries = 5
+            max_retries = 10
             last_exception = None
             
             for attempt in range(max_retries):
@@ -136,8 +136,7 @@ class GroqService:
 
             prompt = self._create_comparison_prompt(old_text, new_text, doc_type)
 
-            # Reuse retry logic
-            max_retries = 3
+            max_retries = 10
             last_exception = None
 
             for attempt in range(max_retries):

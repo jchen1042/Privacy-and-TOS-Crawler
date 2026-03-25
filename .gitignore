@@ -59,6 +59,7 @@ build/
 .coverage
 htmlcov/
 backend/test
+test_policy.html
 
 # Backend specific
 backend/venv/

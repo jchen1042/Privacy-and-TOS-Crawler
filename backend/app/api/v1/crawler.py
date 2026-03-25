@@ -7,6 +7,7 @@ from app.middleware.auth_middleware import get_current_user
 from app.models.user import User
 from app.models.crawl_session import CrawlSession, SessionStatus
 from app.models.document import Document
+from app.models.document_version import DocumentVersion
 from app.models.analysis_result import AnalysisResult
 from app.schemas.crawler import (
     CrawlRequest,
@@ -64,6 +65,7 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
             )
             if cached_docs:
                 logger.info(f"Found {len(cached_docs)} cached documents for {url} - using cache")
+                print(f"Found {len(cached_docs)} cached documents for {url} - using cache")
         else:
             logger.info(f"force_refresh=True: Bypassing global document cache for {url} - will crawl fresh")
         
@@ -79,6 +81,7 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
             
             # Use cached documents
             for cached_doc in cached_docs:
+                print(f"Using cached document: {cached_doc.document_url} (type: {cached_doc.document_type}, hash: {cached_doc.text_hash[:8]}...)")
                 # Create user-specific document from cached data
                 document = Document(
                     user_id=user_id,
@@ -113,10 +116,16 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
             # No cache - proceed with normal crawl
             async with CrawlerService() as crawler:
                 result = await crawler.crawl_url(url)
+
+            # Initialize Groq service for potential comparisons
+            groq_service = GroqService()
             
             # Store documents in global cache and create user documents
             for doc_type, docs in result.get('documents', {}).items():
                 for doc in docs:
+                    # Find the previous version of the document to get its text, if it exists.
+                    old_global_doc = GlobalDocumentService.find_cached_document_by_url(db, doc['url'])
+    
                     # Store in global cache with original base_url
                     try:
                         global_doc = GlobalDocumentService.store_document(
@@ -130,9 +139,37 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
                         )
                         global_documents_map[doc['url']] = global_doc
                     except Exception as cache_error:
-                        logger.warning(f"Error storing in global cache: {cache_error}")
+                        logger.error(f"Error storing document in global cache, skipping: {cache_error}")
                         # Continue even if cache storage fails
-                        global_doc = None
+                        continue
+
+                    # If the document was updated (hash is different), perform comparison.
+                    if old_global_doc and old_global_doc.text_hash != global_doc.text_hash:
+                        logger.info(f"Document {doc['url']} has changed (v{old_global_doc.version} -> v{global_doc.version}). Analyzing differences.")
+                        print(f"Document {doc['url']} has changed (v{old_global_doc.version} -> v{global_doc.version}). Analyzing differences.")
+                        try:
+                            change_analysis = await groq_service.compare_documents(
+                                old_text=old_global_doc.raw_text,
+                                new_text=global_doc.raw_text,
+                                doc_type=global_doc.document_type
+                            )
+                            logger.info(f"Change analysis for {doc['url']}: {change_analysis}")
+                            # TODO: Store this `change_analysis` in a new `DocumentVersion` table.
+                            document_version = DocumentVersion(
+                                document_id=global_doc.id,
+                                raw_text=global_doc.raw_text,
+                                text_hash=global_doc.text_hash,
+                                word_count=global_doc.word_count,
+                                change_description=change_analysis.get('change_description'),
+                                analysis_summary=change_analysis.get('analysis_summary')
+                            )
+                            db.add(document_version)
+                            db.flush()
+
+                        except Exception as compare_error:
+                            logger.error(f"Failed to compare document versions for {doc['url']}: {compare_error}")
+                    else:
+                        print(f"Document {doc['url']} is new or unchanged (hash: {doc['text_hash'][:8]}...) - skipping comparison")
                     
                     # Create user-specific document
                     document = Document(
@@ -168,7 +205,8 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
             logger.info(f"Using {len(cached_docs)} cached documents - saved crawling time")
         
         # Analyze documents - check global analysis cache first (unless force_refresh)
-        groq_service = GroqService()
+        if 'groq_service' not in locals():
+            groq_service = GroqService()
         gemini_service = None  # Only initialize if absolutely necessary
         
         # Track Gemini usage to prevent quota exhaustion
@@ -590,4 +628,3 @@ async def delete_crawl_session(
     db.commit()
     
     return {"success": True, "message": "Session deleted successfully"}
-

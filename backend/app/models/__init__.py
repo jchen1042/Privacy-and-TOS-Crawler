@@ -6,6 +6,7 @@ from app.models.analysis_result import AnalysisResult
 from app.models.user_favorite import UserFavorite
 from app.models.global_document import GlobalDocument
 from app.models.global_analysis_result import GlobalAnalysisResult
+from app.models.document_version import DocumentVersion
 
 __all__ = [
     "User",

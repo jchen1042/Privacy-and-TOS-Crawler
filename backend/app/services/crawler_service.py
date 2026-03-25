@@ -11,14 +11,14 @@ from app.crawler.text_extractor import extract_text, is_valid_document, calculat
 
 logger = logging.getLogger(__name__)
 
-
 class CrawlerService:
     """Service for crawling websites and extracting legal documents"""
     
     def __init__(self):
         """Initialize crawler service"""
         self.session = None
-        self.user_agent = "Mozilla/5.0 (compatible; TOSAnalyzer/1.0)"
+        # Updated User-Agent to mimic a real browser to avoid 403s
+        self.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         self.timeout = aiohttp.ClientTimeout(total=30, connect=10)
     
     async def __aenter__(self):
@@ -27,7 +27,12 @@ class CrawlerService:
         self.session = aiohttp.ClientSession(
             connector=connector,
             timeout=self.timeout,
-            headers={'User-Agent': self.user_agent}
+            # Added more headers to look like a real browser
+            headers={
+                'User-Agent': self.user_agent,
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+            }
         )
         return self
     

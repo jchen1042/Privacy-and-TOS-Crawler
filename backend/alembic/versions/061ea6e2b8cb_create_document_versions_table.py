@@ -10,8 +10,6 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-
-# revision identifiers, used by Alembic.
 revision: str = '061ea6e2b8cb'
 down_revision: Union[str, None] = '5b8d6e7062dd'
 branch_labels: Union[str, Sequence[str], None] = None
@@ -19,7 +17,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # 1. Create the new Document Versions table
     op.create_table('document_versions',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('document_id', sa.UUID(), nullable=False),
@@ -32,10 +29,8 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['document_id'], ['documents.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
-    # 2. Add an index so searching by document_id is fast
     op.create_index(op.f('ix_document_versions_document_id'), 'document_versions', ['document_id'], unique=False)
 
 def downgrade() -> None:
-    # This allows you to "undo" the change if needed
     op.drop_index(op.f('ix_document_versions_document_id'), table_name='document_versions')
     op.drop_table('document_versions')
