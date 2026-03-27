@@ -60,3 +60,17 @@ class SessionAnalysisResponse(BaseModel):
     created_at: datetime
     documents: List[DocumentAnalysisResponse] = Field(default_factory=list)
 
+class DocumentVersionResponse(BaseModel):
+    """Document version response schema"""
+    id: UUID
+    global_document_id: UUID
+    version_number: int
+    raw_text: str | None = None
+    text_hash: str
+    word_count: int
+    analysis_summary: str | None = None
+    change_description: str | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

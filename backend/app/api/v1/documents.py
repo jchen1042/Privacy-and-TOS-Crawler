@@ -1,13 +1,14 @@
 """Document endpoints"""
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from app.middleware.auth_middleware import get_current_user
 from app.models.user import User
 from app.models.document import Document
+from app.models.document_version import DocumentVersion
 from app.models.analysis_result import AnalysisResult
 from app.models.crawl_session import CrawlSession
-from app.schemas.analysis import AnalysisResponse, DocumentAnalysisResponse, SessionAnalysisResponse
+from app.schemas.analysis import AnalysisResponse, DocumentAnalysisResponse, SessionAnalysisResponse, DocumentVersionResponse
 from app.database.base import get_db
 from sqlalchemy.orm import Session
 
@@ -65,6 +66,33 @@ async def get_document(
     )
 
 
+@router.get("/{document_id}/versions", response_model=List[DocumentVersionResponse])
+async def get_document_versions(
+    document_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all historical versions and change analysis for a specific document.
+    This tracks changes at the global level across all users.
+    """
+    # 1. Fetch the user's document to verify ownership/access
+    document = db.query(Document).filter(
+        Document.id == document_id,
+        Document.user_id == current_user.id
+    ).first()
+    
+    if not document or not document.global_document_id:
+        raise HTTPException(status_code=404, detail="Document not found or not linked to global store")
+
+    # 2. Fetch versions associated with the GlobalDocument
+    versions = db.query(DocumentVersion).filter(
+        DocumentVersion.global_document_id == document.global_document_id
+    ).order_by(DocumentVersion.created_at.desc()).all()
+    
+    return versions
+
+
 @router.post("/{document_id}/favorite")
 async def add_to_favorites(
     document_id: UUID,
@@ -99,4 +127,3 @@ async def remove_from_favorites(
         status_code=501,
         detail="Favorites service not yet implemented. Phase 2 coming soon!"
     )
-
