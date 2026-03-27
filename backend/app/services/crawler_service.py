@@ -219,6 +219,8 @@ class CrawlerService:
                     logger.error(f"  Error Type: {error_type}")
                     logger.error(f"  Error Message: {error_msg}")
                     logger.error(f"  Error Details: {repr(e)}")
+                    print(f"Error processing document {link['url']} (type: {doc_type}): {error_msg}")
+
                     continue
         
         return documents
@@ -237,6 +239,7 @@ class CrawlerService:
             
             if not is_valid_document(text):
                 logger.warning(f"Invalid document content at {url}")
+                print(f"Invalid document content at {url}")
                 return None
             
             text_hash = calculate_text_hash(text)
@@ -254,6 +257,7 @@ class CrawlerService:
             
         except Exception as e:
             logger.error(f"Error processing document {url}: {str(e)}")
+            print(f"Error processing document {url}: {str(e)}")
             return None
     
     def _normalize_url(self, url: str) -> str:

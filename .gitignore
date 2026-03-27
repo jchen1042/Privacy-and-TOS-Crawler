@@ -73,3 +73,7 @@ frontend/.env.production.local
 
 #docs
 docs
+
+# Code analysis
+cloc.2.08.exe
+cloc-2.08.exe

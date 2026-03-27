@@ -78,6 +78,7 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
         
         if cached_docs:
             logger.info(f"Found {len(cached_docs)} cached documents for {url} - using cache")
+            print(f"Found {len(cached_docs)} cached documents for {url} - using cache")
             cache_hit = True
             
             # Use cached documents
@@ -110,6 +111,7 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
                 document_count += 1
         else:
             logger.info(f"No cached documents found for {url} - crawling fresh")
+            print(f"No cached documents found for {url} - crawling fresh")
             # No cache - proceed with normal crawl
             async with CrawlerService() as crawler:
                 result = await crawler.crawl_url(url)
@@ -120,33 +122,37 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
             # Store documents in global cache and create user documents
             for doc_type, docs in result.get('documents', {}).items():
                 for doc in docs:
-                    # Find the previous version of the document to get its text, if it exists.
+                    # Find the previous version of the document
                     old_global_doc = GlobalDocumentService.find_cached_document_by_url(db, doc['url'])
-    
-                    # Store in global cache with original base_url
+                    
+                    # Save the old values as independent variables BEFORE storing!
+                    old_hash = old_global_doc.text_hash if old_global_doc else None
+                    old_text = old_global_doc.raw_text if old_global_doc else None
+                    old_version = old_global_doc.version if old_global_doc else None
+
+                    # Store in global cache (this will update old_global_doc behind the scenes)
                     try:
                         global_doc = GlobalDocumentService.store_document(
                             db=db,
                             document_url=doc['url'],
                             document_type=doc['document_type'],
-                            raw_text=doc['raw_text'],
-                            base_url=original_base_url,  # Use original crawl URL's base
+                            raw_text=doc['raw_text'],    
+                            base_url=original_base_url,  
                             title=doc.get('title'),
                             word_count=doc['word_count']
                         )
                         global_documents_map[doc['url']] = global_doc
                     except Exception as cache_error:
                         logger.error(f"Error storing document in global cache, skipping: {cache_error}")
-                        # Continue even if cache storage fails
                         continue
 
-                    # If the document was updated (hash is different), perform comparison.
-                    if old_global_doc and old_global_doc.text_hash != global_doc.text_hash:
-                        logger.info(f"Document {doc['url']} has changed (v{old_global_doc.version} -> v{global_doc.version}). Analyzing differences.")
-                        print(f"Document {doc['url']} has changed (v{old_global_doc.version} -> v{global_doc.version}). Analyzing differences.")
+                    # Compare using the saved scalar variables!
+                    if old_hash and old_hash != global_doc.text_hash:
+                        logger.info(f"Document {doc['url']} has changed (v{old_version} -> v{global_doc.version}). Analyzing differences.")
+                        print(f"Document {doc['url']} has changed (v{old_version} -> v{global_doc.version}). Analyzing differences.")
                         try:
                             change_analysis = await groq_service.compare_documents(
-                                old_text=old_global_doc.raw_text,
+                                old_text=old_text,          # <--- Use the saved text
                                 new_text=global_doc.raw_text,
                                 doc_type=global_doc.document_type
                             )
@@ -516,7 +522,6 @@ async def get_session_results(
         )
     
     # Get all documents for this session
-    # Optimized query with joinedload
     documents = db.query(Document).options(
         joinedload(Document.global_document),
         joinedload(Document.analysis)
