@@ -147,29 +147,42 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
                         continue
 
                     # Compare using the saved scalar variables!
-                    if old_hash and old_hash != global_doc.text_hash:
-                        logger.info(f"Document {doc['url']} has changed (v{old_version} -> v{global_doc.version}). Analyzing differences.")
-                        print(f"Document {doc['url']} has changed (v{old_version} -> v{global_doc.version}). Analyzing differences.")
-                        try:
-                            change_analysis = await groq_service.compare_documents(
-                                old_text=old_text,          # <--- Use the saved text
-                                new_text=global_doc.raw_text,
-                                doc_type=global_doc.document_type
-                            )
-                            logger.info(f"Change analysis for {doc['url']}: {change_analysis}")
+                    # Create a DocumentVersion if it's brand new OR if the content has changed
+                    if not old_hash or old_hash != global_doc.text_hash:
+                        if old_hash:
+                            logger.info(f"Document {doc['url']} has changed (v{old_version} -> v{global_doc.version}). Analyzing differences.")
+                            try:
+                                change_analysis = await groq_service.compare_documents(
+                                    old_text=old_text,
+                                    new_text=global_doc.raw_text,
+                                    doc_type=global_doc.document_type
+                                )
+                                document_version = DocumentVersion(
+                                    global_document_id=global_doc.id,
+                                    raw_text=global_doc.raw_text,
+                                    text_hash=global_doc.text_hash,
+                                    word_count=global_doc.word_count,
+                                    change_description=change_analysis.get('change_description'),
+                                    analysis_summary=change_analysis.get('analysis_summary'),
+                                    version_number=global_doc.version
+                                )
+                                db.add(document_version)
+                                db.flush()
+                            except Exception as compare_error:
+                                logger.error(f"Failed to compare document versions for {doc['url']}: {compare_error}")
+                        else:
+                            logger.info(f"Creating initial version entry for new document: {doc['url']}")
                             document_version = DocumentVersion(
-                                global_document_id=global_doc.id, # Ensure field name matches model
+                                global_document_id=global_doc.id,
                                 raw_text=global_doc.raw_text,
                                 text_hash=global_doc.text_hash,
                                 word_count=global_doc.word_count,
-                                change_description=change_analysis.get('change_description'),
-                                analysis_summary=change_analysis.get('analysis_summary')
+                                change_description=None, # Initial version has no "changes"
+                                analysis_summary="Initial baseline version captured.",
+                                version_number=1
                             )
                             db.add(document_version)
                             db.flush()
-
-                        except Exception as compare_error:
-                            logger.error(f"Failed to compare document versions for {doc['url']}: {compare_error}")
                     else:
                         print(f"Document {doc['url']} is new or unchanged (hash: {doc['text_hash'][:8]}...) - skipping comparison")
                     

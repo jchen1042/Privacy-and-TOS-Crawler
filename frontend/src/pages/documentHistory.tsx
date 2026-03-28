@@ -1,26 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Clock, ArrowLeft, ChevronRight, FileDiff, Info, AlertCircle, History } from 'lucide-react';
+import { Clock, ArrowLeft, ChevronRight, FileDiff, Info, AlertCircle, History, AlertTriangle } from 'lucide-react';
 import { documentService } from '../services/documentService';
 import { DocumentVersion } from '../types/history';
 import Layout from '@/components/layout/Layout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { Card, CardContent, Spinner, Badge } from '@/components/ui';
+import { Card, CardContent, Spinner, Badge, Button } from '@/components/ui';
 
 const DocumentHistory: React.FC = () => {
   const router = useRouter();
   const { documentId } = router.query;
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadHistory = async () => {
-      if (!documentId) return;
+      // Ensure we have a string and it's not a placeholder/URL
+      const id = Array.isArray(documentId) ? documentId[0] : documentId;
+      if (!id || id === 'your-uuid-here' || id.startsWith('http')) {
+        setError("Invalid or missing Document ID. Please navigate here from the Analyzer dashboard.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const data = await documentService.getDocumentHistory(documentId as string);
+        const data = await documentService.getDocumentHistory(id);
         setVersions(data);
+        setError(null);
       } catch (err) {
         console.error("Failed to fetch history:", err);
+        setError("Could not retrieve version history. The document might not exist or you don't have permission.");
       } finally {
         setLoading(false);
       }
@@ -28,22 +38,32 @@ const DocumentHistory: React.FC = () => {
     if (router.isReady) loadHistory();
   }, [documentId, router.isReady]);
 
-  if (loading) {
-    return (
-      <ProtectedRoute>
-        <Layout title="Version History - TOS Crawler">
-          <div className="flex items-center justify-center py-20">
-            <Spinner size="lg" label="Loading version history..." />
-          </div>
-        </Layout>
-      </ProtectedRoute>
-    );
-  }
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-20">
+          <Spinner size="lg" label="Loading version history..." />
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <Card className="bg-red-900/10 border-red-900/30">
+          <CardContent className="p-12 text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">History Unavailable</h3>
+            <p className="text-gray-400 mb-6 max-w-md mx-auto">{error}</p>
+            <Button onClick={() => router.push('/crawler')} variant="outline">
+              Return to Analyzer
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
 
   return (
-    <ProtectedRoute>
-      <Layout title="Version History - TOS Crawler">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-8">
             <button 
@@ -126,6 +146,13 @@ const DocumentHistory: React.FC = () => {
             )}
           </div>
         </div>
+    );
+  };
+
+  return (
+    <ProtectedRoute>
+      <Layout title="Version History - TOS Crawler">
+        {renderContent()}
       </Layout>
     </ProtectedRoute>
   );
