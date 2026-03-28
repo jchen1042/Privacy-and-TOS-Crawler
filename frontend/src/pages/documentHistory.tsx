@@ -6,6 +6,7 @@ import { DocumentVersion } from '../types/history';
 import Layout from '@/components/layout/Layout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, Spinner, Badge, Button } from '@/components/ui';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
 const DocumentHistory: React.FC = () => {
   const router = useRouter();
@@ -15,6 +16,17 @@ const DocumentHistory: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const auth = getAuth();
+    
+    // Use onAuthStateChanged to ensure the user is loaded before fetching
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && router.isReady) {
+        loadHistory();
+      } else if (!user && !loading) {
+        setError("Please log in to view document history.");
+      }
+    });
+
     const loadHistory = async () => {
       // Ensure we have a string and it's not a placeholder/URL
       const id = Array.isArray(documentId) ? documentId[0] : documentId;
@@ -25,17 +37,19 @@ const DocumentHistory: React.FC = () => {
       }
 
       try {
+        setLoading(true);
         const data = await documentService.getDocumentHistory(id);
         setVersions(data);
         setError(null);
       } catch (err) {
         console.error("Failed to fetch history:", err);
-        setError("Could not retrieve version history. The document might not exist or you don't have permission.");
+        setError("Could not retrieve version history. Ensure you are using a valid Document ID and are logged in.");
       } finally {
         setLoading(false);
       }
     };
-    if (router.isReady) loadHistory();
+
+    return () => unsubscribe();
   }, [documentId, router.isReady]);
 
   const renderContent = () => {

@@ -77,44 +77,119 @@ async def crawl_task(session_id: UUID, url: str, user_id: UUID, force_refresh: b
         global_documents_map = {}  # Map document_url -> GlobalDocument for analysis lookup
         
         if cached_docs:
-            logger.info(f"Found {len(cached_docs)} cached documents for {url} - using cache")
-            print(f"Found {len(cached_docs)} cached documents for {url} - using cache")
+            print(f"Found {len(cached_docs)} cached URLs for {url} - verifying live content for updates")
             cache_hit = True
+            groq_service = GroqService()
             
-            # Use cached documents
-            for cached_doc in cached_docs:
-                document = Document(
-                    user_id=user_id,
-                    session_id=session_id,
-                    global_document_id=cached_doc.id,  # <--- LINK TO GLOBAL
-                    url=cached_doc.document_url,
-                    document_type=cached_doc.document_type,
-                    title=cached_doc.title,  
-                )
-                db.add(document)
-                db.flush()
+            async with CrawlerService() as crawler:
+                for cached_doc in cached_docs:
+                    # Fetch live content for the known URL to check for updates
+                    try:
+                        live_doc_data = await crawler._process_single_document(
+                            cached_doc.document_url, 
+                            cached_doc.document_type
+                        )
+                    except Exception as fetch_error:
+                        logger.warning(f"Failed to fetch live update for {cached_doc.document_url}: {fetch_error}")
+                        live_doc_data = None
+
+                    target_global_doc = cached_doc
+                    
+                    # Text Hash Analysis: Compare live content against the global store
+                    if live_doc_data and live_doc_data['text_hash'] != cached_doc.text_hash:
+                        logger.info(f"Change detected in {cached_doc.document_url} (v{cached_doc.version}). Analyzing differences.")
+                        print(f"Change detected in {cached_doc.document_url} (v{cached_doc.version}). Analyzing differences.")
+                        try:
+                            # Perform AI comparison between old cached text and new live text
+                            change_analysis = await groq_service.compare_documents(
+                                old_text=cached_doc.raw_text,
+                                new_text=live_doc_data['raw_text'],
+                                doc_type=cached_doc.document_type
+                            )
+                            
+                            # Update the GlobalDocument 
+                            target_global_doc = GlobalDocumentService.store_document(
+                                db=db,
+                                document_url=live_doc_data['url'],
+                                document_type=live_doc_data['document_type'],
+                                raw_text=live_doc_data['raw_text'],
+                                base_url=original_base_url,
+                                title=live_doc_data['title'],
+                                word_count=live_doc_data['word_count']
+                            )
+                            
+                            # Record the new version in history
+                            document_version = DocumentVersion(
+                                global_document_id=target_global_doc.id,
+                                raw_text=live_doc_data['raw_text'],
+                                text_hash=live_doc_data['text_hash'],
+                                word_count=live_doc_data['word_count'],
+                                change_description=change_analysis.get('change_description'),
+                                analysis_summary=change_analysis.get('analysis_summary'),
+                                version_number=target_global_doc.version
+                            )
+                            db.add(document_version)
+                            db.flush()
+                        except Exception as compare_error:
+                            logger.error(f"Failed to analyze changes for {cached_doc.document_url}: {compare_error}")
+                            print(f"Failed to analyze changes for {cached_doc.document_url}: {compare_error}")
+                    else:
+                        # No change detected, but ensure at least one baseline version exists in the history table
+                        print(f"No change detected for {cached_doc.document_url} (hash: {cached_doc.text_hash[:8]}...) - using cached version")
+                        version_exists = db.query(DocumentVersion).filter(
+                            DocumentVersion.global_document_id == cached_doc.id,
+                            DocumentVersion.text_hash == cached_doc.text_hash
+                        ).first()
+
+                        if not version_exists:
+                            logger.info(f"Creating missing baseline version for cached document: {cached_doc.document_url}")
+                            document_version = DocumentVersion(
+                                global_document_id=cached_doc.id,
+                                raw_text=cached_doc.raw_text,
+                                text_hash=cached_doc.text_hash,
+                                word_count=cached_doc.word_count,
+                                change_description=None,
+                                analysis_summary="Initial baseline version captured (cache verification).",
+                                version_number=cached_doc.version or 1
+                            )
+                            db.add(document_version)
+                            db.flush()
+
+                    # Create the user-specific pointer to this global document
+                    document = Document(
+                        user_id=user_id,
+                        session_id=session_id,
+                        global_document_id=target_global_doc.id,
+                        url=target_global_doc.document_url,
+                        document_type=target_global_doc.document_type,
+                        title=target_global_doc.title,  
+                    )
+                    db.add(document)
+                    db.flush()
                 
-                # Store global document reference for analysis lookup
-                global_documents_map[cached_doc.document_url] = cached_doc
-                
-                # Collect documents for analysis
-                documents_to_analyze.append({
-                    'document': document,
-                    'global_document': cached_doc,
-                    'text': cached_doc.raw_text,
-                    'url': cached_doc.document_url,
-                    'doc_type': cached_doc.document_type,
-                    'text_hash': cached_doc.text_hash,
-                    'from_cache': True
-                })
-                
-                document_count += 1
+                    # Store global document reference for analysis lookup
+                    global_documents_map[target_global_doc.document_url] = target_global_doc
+                    
+                    # Collect for LLM analysis (summary/measurements) if it's missing in global store
+                    documents_to_analyze.append({
+                        'document': document,
+                        'global_document': target_global_doc,
+                        'text': target_global_doc.raw_text,
+                        'url': target_global_doc.document_url,
+                        'doc_type': target_global_doc.document_type,
+                        'text_hash': target_global_doc.text_hash,
+                        'from_cache': True
+                    })
+                    
+                    document_count += 1
         else:
             logger.info(f"No cached documents found for {url} - crawling fresh")
             print(f"No cached documents found for {url} - crawling fresh")
             # No cache - proceed with normal crawl
             async with CrawlerService() as crawler:
                 result = await crawler.crawl_url(url)
+
+            print(f"Crawl completed for {url} - got {len(result.get('documents', {}))} document(s). Processing and analyzing...")
 
             # Initialize Groq service for potential comparisons
             groq_service = GroqService()

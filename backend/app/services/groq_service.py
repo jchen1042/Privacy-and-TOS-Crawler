@@ -130,9 +130,11 @@ class GroqService:
             cached_result = get_cache(cache_key)
             if cached_result:
                 logger.info(f"Cache HIT for comparison {cache_key}")
+                print(f"Cache HIT for comparison {cache_key}")
                 return cached_result
 
             logger.info(f"Analyzing changes between versions for {doc_type}...")
+            print(f"Analyzing changes between versions for {doc_type}...")
 
             prompt = self._create_comparison_prompt(old_text, new_text, doc_type)
 
@@ -166,6 +168,7 @@ class GroqService:
 
         except Exception as e:
             logger.error(f"Error comparing documents: {e}")
+            print(f"Error comparing documents: {e}")
             raise
 
     def _create_analysis_prompt(self, text: str, url: str, doc_type: str) -> str:
@@ -207,7 +210,6 @@ Document Text:
 
     def _create_comparison_prompt(self, old_text: str, new_text: str, doc_type: str) -> str:
         """Create prompt for comparing two document versions"""
-        # Use smaller context window for comparison to ensure both fit
         limit = 15000
         old_preview = old_text[:limit]
         new_preview = new_text[:limit]
@@ -222,10 +224,11 @@ NEW VERSION (Truncated):
 
 IMPORTANT: Respond with ONLY a JSON object with this structure:
 {{
-    "summary_of_changes": "Concise summary of what changed...",
-    "risk_level_of_changes": "LOW" | "MEDIUM" | "HIGH",
+    "change_description": "Concise summary of what changed between these versions",
+    "analysis_summary": "A summary of the key points in the NEW version",
+    "risk_level_of_changes": "LOW",
     "key_changes": [
-        {{ "category": "Data Collection"|"User Rights"|"Other", "description": "...", "impact": "..." }}
+        {{ "category": "Data Collection", "description": "Description of change", "impact": "Impact on user" }}
     ]
 }}"""
     
@@ -282,8 +285,10 @@ IMPORTANT: Respond with ONLY a JSON object with this structure:
             return json.loads(text.strip())
         except json.JSONDecodeError:
             logger.error("Failed to parse comparison JSON")
+            print("Failed to parse comparison JSON")
             return {
-                "summary_of_changes": "Analysis failed to parse.",
+                "change_description": "Analysis failed to parse.",
+                "analysis_summary": "Summary unavailable due to parsing error.",
                 "risk_level_of_changes": "UNKNOWN",
                 "key_changes": []
             }
