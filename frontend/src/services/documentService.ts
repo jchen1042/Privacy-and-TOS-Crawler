@@ -1,27 +1,21 @@
-import axios from 'axios';
 import { DocumentVersion } from '../types/history';
-import { getAuth } from 'firebase/auth';
-
-// Assuming standard API configuration
-const API_BASE_URL = "https://privacy-and-tos-crawler-backend.onrender.com/api/v1";
+import { apiService } from './api';
 
 export const documentService = {
   getDocumentHistory: async (documentId: string): Promise<DocumentVersion[]> => {
-    const auth = getAuth();
-    
-    // Ensure auth is initialized and user is present
-    if (!auth.currentUser) {
-      throw new Error("Authentication required to fetch history");
+    const response = await apiService.getDocumentVersions(documentId);
+    if (response.success && response.data) {
+      return response.data;
     }
+    throw new Error(response.error?.message || "Failed to fetch history");
+  },
 
-    const token = await auth.currentUser.getIdToken();
-
-    const response = await axios.get<DocumentVersion[]>(
-      `${API_BASE_URL}/documents/${documentId}/versions`,
-      {
-        headers: { Authorization: `Bearer ${token}` }
-      }
-    );
-    return response.data;
+  getDocument: async (documentId: string): Promise<any> => {
+    const response = await apiService.getDocument(documentId);
+    if (response.success && response.data) {
+      // apiService returns DocumentResponse, we unwrap the inner 'data' for the component
+      return response.data;
+    }
+    throw new Error(response.error?.message || "Failed to fetch document info");
   },
 };

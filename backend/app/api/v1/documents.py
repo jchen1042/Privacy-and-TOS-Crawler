@@ -10,7 +10,7 @@ from app.models.analysis_result import AnalysisResult
 from app.models.crawl_session import CrawlSession
 from app.schemas.analysis import AnalysisResponse, DocumentAnalysisResponse, SessionAnalysisResponse, DocumentVersionResponse
 from app.database.base import get_db
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 router = APIRouter()
 
@@ -33,7 +33,9 @@ async def get_document(
         DocumentAnalysisResponse with analysis results
     """
     # Get document (with user isolation)
-    document = db.query(Document).filter(
+    document = db.query(Document).options(
+        joinedload(Document.global_document)
+    ).filter(
         Document.id == document_id,
         Document.user_id == current_user.id
     ).first()
@@ -52,7 +54,7 @@ async def get_document(
         url=document.url,
         document_type=document.document_type,
         title=document.title,
-        word_count=document.word_count,
+        word_count=document.global_document.word_count if document.global_document else 0,
         created_at=document.created_at,
         analysis=AnalysisResponse(
             id=analysis.id,

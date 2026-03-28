@@ -16,6 +16,7 @@ import {
   ApiResponse,
   GlobalDocumentSearchResponse,
   DeleteDocumentRequest,
+  DocumentVersion,
   DeleteDocumentResponse
 } from '@/types'
 
@@ -336,6 +337,13 @@ class ApiService {
     return this.request<DocumentResponse>({
       method: 'GET',
       url: `/documents/${documentId}`
+    })
+  }
+
+  async getDocumentVersions(documentId: string): Promise<ApiResponse<DocumentVersion[]>> {
+    return this.request<DocumentVersion[]>({
+      method: 'GET',
+      url: `/documents/${documentId}/versions`
     })
   }
 

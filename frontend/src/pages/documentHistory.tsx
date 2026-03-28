@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Clock, ArrowLeft, ChevronRight, FileDiff, Info, AlertCircle, History, AlertTriangle } from 'lucide-react';
+import { Clock, ArrowLeft, ChevronRight, FileDiff, Info, AlertCircle, History, AlertTriangle, ExternalLink } from 'lucide-react';
 import { documentService } from '../services/documentService';
 import { DocumentVersion } from '../types/history';
 import Layout from '@/components/layout/Layout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { Card, CardContent, Spinner, Badge, Button } from '@/components/ui';
+import { Card, CardContent, Spinner, Badge, Button, CardHeader, CardTitle } from '@/components/ui';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
 const DocumentHistory: React.FC = () => {
   const router = useRouter();
   const { documentId } = router.query;
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
+  const [docInfo, setDocInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,8 +30,12 @@ const DocumentHistory: React.FC = () => {
 
       try {
         setLoading(true);
-        const data = await documentService.getDocumentHistory(id);
-        setVersions(data);
+        const [info, historyData] = await Promise.all([
+          documentService.getDocument(id),
+          documentService.getDocumentHistory(id)
+        ]);
+        setDocInfo(info);
+        setVersions(historyData);
         setError(null);
       } catch (err) {
         console.error("Failed to fetch history:", err);
@@ -38,6 +44,8 @@ const DocumentHistory: React.FC = () => {
         setLoading(false);
       }
     };
+
+    setIsMounted(true);
 
     const auth = getAuth();
     // Ensure auth is initialized and router is ready before attempting fetch
@@ -98,6 +106,24 @@ const DocumentHistory: React.FC = () => {
             <p className="text-gray-300 text-lg">
               Track how this document has evolved over multiple crawls.
             </p>
+
+            {/* Document Context Header */}
+            {docInfo && (
+              <Card className="mt-6 bg-gray-800/40 border-gray-700">
+                <CardContent className="p-4">
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-xl font-bold text-blue-400">
+                      {docInfo.title || 'Untitled Document'}
+                    </h2>
+                    <a href={docInfo.url} target="_blank" rel="noopener noreferrer" 
+                       className="text-sm text-gray-400 hover:text-blue-300 transition-colors flex items-center gap-2 w-fit">
+                      <ExternalLink size={14} />
+                      {docInfo.url}
+                    </a>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="relative border-l-2 border-gray-700 ml-4 pl-8 space-y-12">
@@ -120,11 +146,11 @@ const DocumentHistory: React.FC = () => {
                       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
                         <div>
                           <div className="flex items-center gap-3 mb-2">
-                            <span className="text-xl font-bold text-white">
+                            {isMounted && <span className="text-xl font-bold text-white">
                               {new Date(version.created_at).toLocaleDateString('en-US', { 
                                 month: 'long', day: 'numeric', year: 'numeric' 
                               })}
-                            </span>
+                            </span>}
                             {index === 0 && (
                               <Badge variant="success">Current</Badge>
                             )}
