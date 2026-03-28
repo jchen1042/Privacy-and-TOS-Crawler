@@ -4,10 +4,10 @@ import Layout from '@/components/layout/Layout'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import CrawlStatusCard from '@/components/crawler/CrawlStatusCard'
 import SimpleAnalysisDisplay from '@/components/analysis/SimpleAnalysisDisplay'
-import { Card, CardContent, CardHeader, CardTitle, Spinner } from '@/components/ui'
+import { Card, CardContent, CardHeader, CardTitle, Spinner, Button} from '@/components/ui'
 import { useCrawler } from '@/store/crawlerStore'
 import { CrawlSession } from '@/types'
-import { ArrowLeft, RefreshCw, FileText, Download } from 'lucide-react'
+import { ArrowLeft, RefreshCw, FileText, Download, History } from 'lucide-react'
 import { apiService } from '@/services'
 import { generatePDFReport } from '@/utils/pdfGenerator'
 
@@ -184,25 +184,35 @@ const CrawlResultsPage: React.FC = () => {
                   <div key={document.document_id || index}>
                     <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700">
                       <CardContent className="p-6">
-                        <div className="mb-4">
-                          <h2 className="text-2xl font-bold text-white mb-2">
-                            {document.title || 'Document ' + (index + 1)}
-                          </h2>
-                          <p className="text-gray-300">
-                            <span className="inline-flex items-center space-x-2">
-                              <FileText className="h-4 w-4" />
-                              <span className="capitalize">{document.document_type}</span>
-                            </span>
-                            {' • '}
-                            <a href={document.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline">
-                              {document.url}
-                            </a>
-                          </p>
-                          {document.word_count && (
-                            <p className="text-sm text-gray-400 mt-1">
-                              Word count: {document.word_count.toLocaleString()}
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+                          <div>
+                            <h2 className="text-2xl font-bold text-white mb-2">
+                              {document.title || 'Document ' + (index + 1)}
+                            </h2>
+                            <p className="text-gray-300">
+                              <span className="inline-flex items-center space-x-2">
+                                <FileText className="h-4 w-4" />
+                                <span className="capitalize">{document.document_type}</span>
+                              </span>
+                              {' • '}
+                              <a href={document.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline">
+                                {document.url}
+                              </a>
                             </p>
-                          )}
+                            {document.word_count && (
+                              <p className="text-sm text-gray-400 mt-1">
+                                Word count: {document.word_count.toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.push(`/documentHistory?documentId=${document.document_id}`)}
+                            leftIcon={<History className="h-4 w-4" />}
+                          >
+                            View History
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>

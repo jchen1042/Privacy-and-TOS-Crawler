@@ -16,20 +16,10 @@ const DocumentHistory: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const auth = getAuth();
-    
-    // Use onAuthStateChanged to ensure the user is loaded before fetching
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && router.isReady) {
-        loadHistory();
-      } else if (!user && !loading) {
-        setError("Please log in to view document history.");
-      }
-    });
-
     const loadHistory = async () => {
-      // Ensure we have a string and it's not a placeholder/URL
       const id = Array.isArray(documentId) ? documentId[0] : documentId;
+      
+      // Validation check for ID
       if (!id || id === 'your-uuid-here' || id.startsWith('http')) {
         setError("Invalid or missing Document ID. Please navigate here from the Analyzer dashboard.");
         setLoading(false);
@@ -48,6 +38,19 @@ const DocumentHistory: React.FC = () => {
         setLoading(false);
       }
     };
+
+    const auth = getAuth();
+    // Ensure auth is initialized and router is ready before attempting fetch
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (router.isReady) {
+        if (user) {
+          loadHistory();
+        } else {
+          setError("Please log in to view document history.");
+          setLoading(false);
+        }
+      }
+    });
 
     return () => unsubscribe();
   }, [documentId, router.isReady]);

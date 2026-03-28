@@ -220,13 +220,25 @@ const CrawlerPage: React.FC = () => {
                     {latestResults.documents.map((document: any, index: number) => (
                       <div key={document.document_id || index}>
                         <div className="mb-4 pb-4 border-b border-gray-700">
-                          <h3 className="text-lg font-semibold text-white mb-2">
-                            {document.title || `Document ${index + 1}`}
-                          </h3>
-                          <p className="text-sm text-gray-400">
-                            <span className="capitalize">{document.document_type}</span>
-                            {document.word_count && ` • ${document.word_count.toLocaleString()} words`}
-                          </p>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                              <h3 className="text-lg font-semibold text-white mb-2">
+                                {document.title || `Document ${index + 1}`}
+                              </h3>
+                              <p className="text-sm text-gray-400">
+                                <span className="capitalize">{document.document_type}</span>
+                                {document.word_count && ` • ${document.word_count.toLocaleString()} words`}
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/documentHistory?documentId=${document.document_id}`)}
+                              leftIcon={<History className="h-4 w-4" />}
+                            >
+                              View History
+                            </Button>
+                          </div>
                         </div>
                         {document.analysis && (
                           <SimpleAnalysisDisplay analysis={document.analysis} />
