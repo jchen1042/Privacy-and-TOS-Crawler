@@ -8,7 +8,8 @@ This application allows users to:
 **Crawl** Terms of Service and Privacy Policy documents from websites
 **Analyze** them using AI-powered text mining
 **Extract** key insights including summaries, word frequencies, and risk indicators
-**Track** analysis history and favorite documents
+**Track** analysis history, document change history, and favorite documents.
+
 
 ## Core Features
 
@@ -28,8 +29,11 @@ This application allows users to:
   - Sentiment Analysis Score
    (a few more are under development, will be updated by the Beta)
 
+### Document Timeline
+- **Track changes**: See how documents have changed over time, and get summary of important changes
+
 ### User Management
 **Features**:
   - Search history tracking
   - Document favorites
-  - Report downloads (planning to implement)
+  - Report downloads 
