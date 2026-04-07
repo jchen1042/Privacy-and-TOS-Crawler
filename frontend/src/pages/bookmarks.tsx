@@ -5,10 +5,11 @@ import { Card, CardContent, Spinner } from '@/components/ui'
 import { Bookmark, ExternalLink, Trash2, Search, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { apiService } from '@/services'
+import { FavoriteDocument } from '@/types'
 import toast from 'react-hot-toast'
 
 const BookmarksPage: React.FC = () => {
-  const [bookmarks, setBookmarks] = useState<any[]>([])
+  const [bookmarks, setBookmarks] = useState<FavoriteDocument[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -96,7 +97,7 @@ const BookmarksPage: React.FC = () => {
                           {bookmark.summary || bookmark.description}
                         </p>
                         <div className="flex items-center space-x-4 text-xs text-gray-500">
-                          <span>{new Date(bookmark.created_at || bookmark.favorited_at).toLocaleDateString()}</span>
+                          <span>{new Date(bookmark.created_at).toLocaleDateString()}</span>
                           {bookmark.document_type && (
                             <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">
                               {bookmark.document_type}

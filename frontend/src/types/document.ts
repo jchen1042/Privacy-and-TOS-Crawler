@@ -43,17 +43,28 @@ export interface UserFavorite {
   created_at: string
 }
 
+export interface FavoriteDocument {
+  id: string;
+  global_document_id: string;
+  document_id: string;
+  session_id: string | null;
+  url: string;
+  title?: string;
+  summary?: string;
+  description?: string;
+  document_type?: string;
+  created_at: string;
+}
+
 export interface FavoritesResponse {
-  success: boolean
-  data: {
-    documents: (Document & { favorited_at: string })[]
-    pagination: Pagination
-  }
-  message?: string
+  documents: FavoriteDocument[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
 }
 
 export interface FavoriteActionResponse {
   success: boolean
   message: string
 }
-

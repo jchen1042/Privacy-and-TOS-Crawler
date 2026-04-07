@@ -1,12 +1,12 @@
 import { create } from 'zustand'
-import { Document, AnalysisResult, DocumentSearchParams } from '@/types'
+import { Document, AnalysisResult, DocumentSearchParams, FavoriteDocument } from '@/types'
 import { api } from '@/services'
 
 interface DocumentState {
   documents: Document[]
   currentDocument: Document | null
   currentAnalysis: AnalysisResult | null
-  favorites: Document[]
+  favorites: FavoriteDocument[]
   searchResults: Document[]
   isLoading: boolean
   error: string | null
@@ -144,8 +144,8 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       
       if (response.success && response.data) {
         set({
-          favorites: response.data.data.documents,
-          pagination: response.data.data.pagination,
+          favorites: response.data.documents,
+          pagination: { total: response.data.total, page: response.data.page, limit: response.data.limit, pages: response.data.pages },
           isLoading: false,
           error: null
         })
