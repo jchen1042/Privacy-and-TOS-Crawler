@@ -170,20 +170,34 @@ const CrawlResultsPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Session Status */}
-          <div className="mb-8">
+          <div className="mb-12 p-6 rounded-2xl bg-blue-900/10 border border-blue-500/20 shadow-xl shadow-blue-500/5 backdrop-blur-sm">
+            <div className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              Session Overview
+            </div>
             <CrawlStatusCard session={session} />
           </div>
 
-          {/* Results */}
-          {session.status === 'completed' && documents.length > 0 ? (
-            <div className="space-y-8">
+          {session.status === 'completed' && documents?.length > 0 ? (
+            <div className="space-y-24">
               {documents.map((document, index) => {
                 const analysis = document.analysis
                 
                 return (
-                  <div key={document.document_id || index}>
-                    <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700">
+                  <div 
+                    key={document.document_id || index}
+                    className="p-8 md:p-12 rounded-[3rem] border border-gray-800 bg-gray-900/30 shadow-2xl relative overflow-hidden"
+                  >
+                    <div className="absolute -top-6 -right-6 opacity-[0.03] pointer-events-none text-white">
+                      <FileText size={240} />
+                    </div>
+                    
+                    <div className="text-[10px] font-black text-blue-500/50 uppercase tracking-[0.4em] mb-10 flex items-center gap-6">
+                      <span className="flex-shrink-0">Document Entry {index + 1}</span>
+                      <div className="flex-1 h-[1px] bg-gray-800" />
+                    </div>
+
+                    <Card className="bg-gray-800/60 backdrop-blur-sm border-gray-700/50 shadow-xl mb-8">
                       <CardContent className="p-6">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
                           <div>

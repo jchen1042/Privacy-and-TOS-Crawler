@@ -88,8 +88,8 @@ const BookmarksPage: React.FC = () => {
               {bookmarks.map((bookmark) => (
                 <Card key={bookmark.id} className="hover-lift">
                   <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
+                    <div className="flex items-start justify-between mb-4 gap-2">
+                      <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-semibold text-white mb-2 truncate">
                           {bookmark.title || bookmark.url}
                         </h3>
@@ -105,7 +105,7 @@ const BookmarksPage: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      <button onClick={() => handleDeleteBookmark(bookmark.id, bookmark.document_id)} className="p-2 text-gray-400 hover:text-red-400 transition-colors ml-2">
+                      <button onClick={() => handleDeleteBookmark(bookmark.id, bookmark.document_id)} className="p-2 text-gray-400 hover:text-red-400 transition-colors flex-shrink-0">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>

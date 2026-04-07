@@ -10,6 +10,7 @@ import { History, ArrowRight, CheckCircle, FileText, RefreshCw } from 'lucide-re
 import { auth } from '@/lib/firebase'
 import { getIdToken } from 'firebase/auth'
 import { apiService } from '@/services'
+import { FavoriteButton } from '@/components/ui/FavoriteButton'
 
 const CrawlerPage: React.FC = () => {
   const { sessions } = useCrawler()
@@ -189,7 +190,6 @@ const CrawlerPage: React.FC = () => {
             </div>
           )}
 
-          {/* Analysis Results Section - Inline Display */}
           {loadingResults ? (
             <div className="mt-12">
               <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700">
@@ -202,27 +202,39 @@ const CrawlerPage: React.FC = () => {
               </Card>
             </div>
           ) : latestResults && latestResults.documents && latestResults.documents.length > 0 ? (
-            <div className="mt-12">
-              <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center space-x-2 text-white">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <span>Analysis Results</span>
-                    </CardTitle>
-                    <div className="text-sm text-gray-400">
-                      {latestResults.url}
-                    </div>
+            <div className="mt-6">
+              <div className="flex items-center justify-between px-2 mb-6">
+                <div className="flex items-center space-x-2 text-white">
+                  <div className="p-2 bg-green-500/10 rounded-lg">
+                    <CheckCircle className="h-6 w-6 text-green-500" />
                   </div>
-                </CardHeader>
-                <CardContent className="!bg-gray-800/90 p-6">
-                  <div className="space-y-8">
-                    {latestResults.documents.map((document: any, index: number) => (
-                      <div key={document.document_id || index}>
-                        <div className="mb-4 pb-4 border-b border-gray-700">
+                  <span className="text-2xl font-bold">Analysis Results</span>
+                </div>
+                <div className="text-sm text-gray-400">
+                  {latestResults.url}
+                </div>
+              </div>
+
+              <div className="space-y-8 pt-6 md:pt-10">
+                {latestResults.documents.map((document: any, index: number) => (
+                      <div 
+                        key={document.document_id || index}
+                        className="p-6 md:p-10 rounded-[2.5rem] border border-gray-700/50 bg-gray-900/40 shadow-xl relative overflow-hidden"
+                      >
+                        {/* Subtle watermark icon for depth */}
+                        <div className="absolute -top-4 -right-4 opacity-[0.02] pointer-events-none text-white">
+                          <FileText size={200} />
+                        </div>
+
+                        <div className="text-[9px] font-black text-blue-500/40 uppercase tracking-[0.4em] mb-4 flex items-center gap-4">
+                          <span className="flex-shrink-0">Document Entry {index + 1}</span>
+                          <div className="flex-1 h-[1px] bg-gray-800" />
+                        </div>
+
+                        <div className="mb-6 pb-6 border-b border-gray-800/50">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
-                              <h3 className="text-lg font-semibold text-white mb-2">
+                              <h3 className="text-xl font-bold text-white mb-2">
                                 {document.title || `Document ${index + 1}`}
                               </h3>
                               <p className="text-sm text-gray-400">
@@ -230,24 +242,28 @@ const CrawlerPage: React.FC = () => {
                                 {document.word_count && ` • ${document.word_count.toLocaleString()} words`}
                               </p>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => router.push(`/documentHistory?documentId=${document.document_id}`)}
-                              leftIcon={<History className="h-4 w-4" />}
-                            >
-                              View History
-                            </Button>
+                            <div className="flex items-center space-x-2">
+                              <FavoriteButton
+                                documentId={document.document_id}
+                                initialIsFavorite={false}
+                              />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.push(`/documentHistory?documentId=${document.document_id}`)}
+                                leftIcon={<History className="h-4 w-4" />}
+                              >
+                                View History
+                              </Button>
+                            </div>
                           </div>
                         </div>
                         {document.analysis && (
                           <SimpleAnalysisDisplay analysis={document.analysis} />
                         )}
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                ))}
+              </div>
             </div>
           ) : null}
         </div>
