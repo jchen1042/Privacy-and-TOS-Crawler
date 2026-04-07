@@ -1,13 +1,54 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Layout from '@/components/layout/Layout'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
-import { Card, CardContent } from '@/components/ui'
-import { Bookmark, ExternalLink, Trash2, Search } from 'lucide-react'
+import { Card, CardContent, Spinner } from '@/components/ui'
+import { Bookmark, ExternalLink, Trash2, Search, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { apiService } from '@/services'
+import toast from 'react-hot-toast'
 
 const BookmarksPage: React.FC = () => {
-  // Bookmarks functionality will be implemented when favorites API is available
-  const bookmarks: any[] = []
+  const [bookmarks, setBookmarks] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadBookmarks()
+  }, [])
+
+  const loadBookmarks = async () => {
+    setIsLoading(true)
+    try {
+      // Provide default pagination parameters
+      const response = await apiService.getFavorites({ page: 1, limit: 10 })
+      if (response.success && response.data?.documents) {
+        setBookmarks(response.data.documents)
+      } else {
+        setError(response.error?.message || 'Failed to load bookmarks')
+      }
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred while loading bookmarks')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteBookmark = async (favoriteId: string, documentId: string) => {
+    if (confirm('Are you sure you want to remove this bookmark?')) {
+      try {
+        // The API now expects the document_id pointer to find the global link
+        const response = await apiService.removeFromFavorites(documentId)
+        if (response.success) {
+          setBookmarks(prev => prev.filter(b => b.id !== favoriteId))
+          toast.success('Bookmark removed successfully!')
+        } else {
+          toast.error(response.error?.message || 'Failed to remove bookmark.')
+        }
+      } catch (err: any) {
+        toast.error(err.message || 'An unexpected error occurred while removing bookmark.')
+      }
+    }
+  }
 
   return (
     <ProtectedRoute>
@@ -29,7 +70,19 @@ const BookmarksPage: React.FC = () => {
           </div>
 
           {/* Bookmarks List */}
-          {bookmarks.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-20">
+              <Spinner size="lg" label="Loading bookmarks..." />
+            </div>
+          ) : error ? (
+            <Card>
+              <CardContent className="p-12 text-center text-red-400">
+                <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Error Loading Bookmarks</h3>
+                <p className="text-gray-400">{error}</p>
+              </CardContent>
+            </Card>
+          ) : bookmarks.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {bookmarks.map((bookmark) => (
                 <Card key={bookmark.id} className="hover-lift">
@@ -51,18 +104,27 @@ const BookmarksPage: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      <button className="p-2 text-gray-400 hover:text-red-400 transition-colors ml-2">
+                      <button onClick={() => handleDeleteBookmark(bookmark.id, bookmark.document_id)} className="p-2 text-gray-400 hover:text-red-400 transition-colors ml-2">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                     
                     <div className="flex space-x-2 pt-4 border-t border-gray-700">
-                      <Link
-                        href={`/crawler/results/${bookmark.session_id || bookmark.id}`}
-                        className="flex-1 btn-outline py-2 text-center text-sm"
-                      >
-                        View Analysis
-                      </Link>
+                      {bookmark.session_id ? (
+                        <Link
+                          href={`/crawler/results/${bookmark.session_id}`}
+                          className="flex-1 btn-outline py-2 text-center text-sm flex items-center justify-center"
+                        >
+                          View Analysis
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/documentHistory?documentId=${bookmark.document_id}`}
+                          className="flex-1 btn-outline py-2 text-center text-sm flex items-center justify-center"
+                        >
+                          View History
+                        </Link>
+                      )}
                       {bookmark.url && (
                         <a
                           href={bookmark.url}
@@ -103,4 +165,3 @@ const BookmarksPage: React.FC = () => {
 }
 
 export default BookmarksPage
-

@@ -40,7 +40,5 @@ class Document(Base):
     # if you want "Per-User" personal notes. Keeping it here for now.
     analysis = relationship("AnalysisResult", back_populates="document", uselist=False, cascade="all, delete-orphan")
     
-    favorites = relationship("UserFavorite", back_populates="document", cascade="all, delete-orphan")
-
     def __repr__(self):
         return f"<Document(id={self.id}, user_id={self.user_id}, global_id={self.global_document_id})>"

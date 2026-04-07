@@ -13,18 +13,17 @@ class UserFavorite(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    global_document_id = Column(UUID(as_uuid=True), ForeignKey("global_documents.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     user = relationship("User", backref="favorites")
-    document = relationship("Document", back_populates="favorites")
+    global_document = relationship("GlobalDocument", backref="favorites")
 
     # Unique constraint
     __table_args__ = (
-        UniqueConstraint('user_id', 'document_id', name='unique_user_document_favorite'),
+        UniqueConstraint('user_id', 'global_document_id', name='unique_user_global_document_favorite'),
     )
 
     def __repr__(self):
-        return f"<UserFavorite(id={self.id}, user_id={self.user_id}, document_id={self.document_id})>"
-
+        return f"<UserFavorite(id={self.id}, user_id={self.user_id}, global_document_id={self.global_document_id})>"

@@ -10,6 +10,7 @@ import { CrawlSession } from '@/types'
 import { ArrowLeft, RefreshCw, FileText, Download, History } from 'lucide-react'
 import { apiService } from '@/services'
 import { generatePDFReport } from '@/utils/pdfGenerator'
+import { FavoriteButton } from '@/components/ui/FavoriteButton'
 
 const CrawlResultsPage: React.FC = () => {
   const router = useRouter()
@@ -205,14 +206,20 @@ const CrawlResultsPage: React.FC = () => {
                               </p>
                             )}
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => router.push(`/documentHistory?documentId=${document.document_id}`)}
-                            leftIcon={<History className="h-4 w-4" />}
-                          >
-                            View History
-                          </Button>
+                          <div className="flex items-center space-x-2">
+                            <FavoriteButton
+                              documentId={document.document_id}
+                              initialIsFavorite={false} // Cannot determine initial state from this API endpoint
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/documentHistory?documentId=${document.document_id}`)}
+                              leftIcon={<History className="h-4 w-4" />}
+                            >
+                              View History
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

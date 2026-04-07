@@ -1,5 +1,5 @@
 """Document endpoints"""
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
 from uuid import UUID
 from app.middleware.auth_middleware import get_current_user
@@ -7,13 +7,80 @@ from app.models.user import User
 from app.models.document import Document
 from app.models.document_version import DocumentVersion
 from app.models.analysis_result import AnalysisResult
+from app.models.global_document import GlobalDocument
+from app.models.global_analysis_result import GlobalAnalysisResult
+from app.models.user_favorite import UserFavorite
 from app.models.crawl_session import CrawlSession
 from app.schemas.analysis import AnalysisResponse, DocumentAnalysisResponse, SessionAnalysisResponse, DocumentVersionResponse
+from app.schemas.favorite import FavoriteDocumentResponse, FavoritesListResponse
 from app.database.base import get_db
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter()
 
+@router.get("/favorites", response_model=FavoritesListResponse)
+async def get_favorites(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get user's favorited documents.
+    """
+    skip = (page - 1) * limit
+
+    favorites_query = db.query(UserFavorite).filter(
+        UserFavorite.user_id == current_user.id
+    )
+
+    total_favorites = favorites_query.count()
+    
+    # Fetch favorites with eager loading of global_document and its analysis
+    user_favorites = favorites_query.options(
+        joinedload(UserFavorite.global_document).joinedload(GlobalDocument.analysis)
+    ).order_by(UserFavorite.created_at.desc()).offset(skip).limit(limit).all()
+
+    response_documents = []
+    for fav in user_favorites:
+        global_doc = fav.global_document
+        if not global_doc:
+            # This should ideally not happen if CASCADE delete is set up correctly
+            # but good to handle defensively
+            continue
+
+        # GlobalAnalysisResult has unique=True on global_document_id, so it's a list of 0 or 1
+        global_analysis = global_doc.analysis[0] if global_doc.analysis else None
+
+        # Find the user's document entry to get the session reference
+        user_doc = db.query(Document).filter(
+            Document.user_id == current_user.id,
+            Document.global_document_id == global_doc.id
+        ).order_by(Document.created_at.desc()).first()
+
+        response_documents.append(
+            FavoriteDocumentResponse(
+                id=fav.id,
+                global_document_id=global_doc.id,
+                document_id=user_doc.id if user_doc else None,
+                session_id=user_doc.session_id if user_doc else None,
+                url=global_doc.document_url,
+                title=global_doc.title,
+                summary=global_analysis.summary_one_sentence if global_analysis else None,
+                description=global_analysis.summary_100_words if global_analysis else None,
+                document_type=global_doc.document_type,
+                created_at=fav.created_at
+            )
+        )
+    
+    return FavoritesListResponse(
+        documents=response_documents,
+        total=total_favorites,
+        page=page,
+        limit=limit,
+        pages=(total_favorites + limit - 1) // limit if limit > 0 else 0
+    )
 
 @router.get("/{document_id}", response_model=DocumentAnalysisResponse)
 async def get_document(
@@ -94,7 +161,6 @@ async def get_document_versions(
     
     return versions
 
-
 @router.post("/{document_id}/favorite")
 async def add_to_favorites(
     document_id: UUID,
@@ -107,10 +173,43 @@ async def add_to_favorites(
     Note: Favorites functionality is planned for future implementation.
     Currently returns 501 Not Implemented status.
     """
-    raise HTTPException(
-        status_code=501,
-        detail="Favorites service not yet implemented. Phase 2 coming soon!"
-    )
+    # Find the user's specific document
+    user_document = db.query(Document).filter(
+        Document.id == document_id,
+        Document.user_id == current_user.id
+    ).first()
+
+    if not user_document:
+        raise HTTPException(status_code=404, detail="User document not found")
+    
+    if not user_document.global_document_id:
+        raise HTTPException(status_code=400, detail="Document is not linked to a global document and cannot be favorited.")
+
+    # Check if it's already favorited
+    existing_favorite = db.query(UserFavorite).filter(
+        UserFavorite.user_id == current_user.id,
+        UserFavorite.global_document_id == user_document.global_document_id
+    ).first()
+
+    if existing_favorite:
+        return {"success": True, "message": "Document already in favorites", "favorite_id": existing_favorite.id}
+
+    # Create new favorite entry
+    try:
+        new_favorite = UserFavorite(
+            user_id=current_user.id,
+            global_document_id=user_document.global_document_id
+        )
+        db.add(new_favorite)
+        db.commit()
+        db.refresh(new_favorite)
+        return {"success": True, "message": "Document added to favorites", "favorite_id": new_favorite.id}
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Document already in favorites (concurrent request)")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add to favorites: {str(e)}")
 
 
 @router.delete("/{document_id}/favorite")
@@ -121,11 +220,30 @@ async def remove_from_favorites(
 ):
     """
     Remove document from user favorites
-    
-    Note: Favorites functionality is planned for future implementation.
-    Currently returns 501 Not Implemented status.
     """
-    raise HTTPException(
-        status_code=501,
-        detail="Favorites service not yet implemented. Phase 2 coming soon!"
-    )
+    # Find the user's specific document to get the global reference
+    user_document = db.query(Document).filter(
+        Document.id == document_id,
+        Document.user_id == current_user.id
+    ).first()
+
+    if not user_document:
+        raise HTTPException(status_code=404, detail="User document not found")
+
+    # Find the favorite entry linking this user to that global document
+    favorite_entry = db.query(UserFavorite).filter(
+        UserFavorite.user_id == current_user.id,
+        UserFavorite.global_document_id == user_document.global_document_id
+    ).first()
+
+    if not favorite_entry:
+        return {"success": True, "message": "Document was not in favorites"}
+
+    # Delete the favorite entry
+    try:
+        db.delete(favorite_entry)
+        db.commit()
+        return {"success": True, "message": "Document removed from favorites"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to remove from favorites: {str(e)}")
