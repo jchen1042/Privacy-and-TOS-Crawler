@@ -201,6 +201,18 @@ IMPORTANT: Respond with ONLY a JSON object (no markdown, no code blocks, no expl
         "keyword_density": <percentage>,
         "legal_clause_count": <number>,
         "risk_indicator_score": <number between 0 and 100>
+    }},
+    "nutrition_label": {{
+        "opt_out_available": "Yes/No/Partial/Not Specified",
+        "data_sharing": "Yes/No/Partial/Not Specified",
+        "data_retention": "How long data is retained/Not Specified",
+        "can_user_request_deletion": "Yes/No/Partial/Not Specified",
+        "third_party_sharing": "Yes/No/Partial/Not Specified",
+        "data_broker_sharing": "Yes/No/Partial/Not Specified",
+        "cross_device_tracking": "Yes/No/Partial/Not Specified",
+        "collection_purpose": "Primary reasons for data collection in four words or less/Not Specified",
+        "microphone_access": "Yes/No/Partial/Not Specified",
+        "camera_access": "Yes/No/Partial/Not Specified"
     }}
 }}
 
@@ -266,6 +278,18 @@ IMPORTANT: Respond with ONLY a JSON object with this structure:
             result.setdefault("summary_100_words", "Analysis pending...")
             result.setdefault("summary_one_sentence", "Analysis pending...")
             result.setdefault("word_frequency", {})
+            result.setdefault("nutrition_label", {
+                "opt_out_available": "Not Specified",
+                "data_sharing": "Not Specified",
+                "data_retention": "Not Specified",
+                "can_user_request_deletion": "Not Specified",
+                "third_party_sharing": "Not Specified",
+                "data_broker_sharing": "Not Specified",
+                "cross_device_tracking": "Not Specified",
+                "collection_purpose": "Not Specified",
+                "microphone_access": "Not Specified",
+                "camera_access": "Not Specified"
+            })
             
             return result
             
@@ -314,6 +338,18 @@ IMPORTANT: Respond with ONLY a JSON object with this structure:
                 "keyword_density": 0,
                 "legal_clause_count": 0,
                 "risk_indicator_score": 50
+            },
+            "nutrition_label": {
+                "opt_out_available": "Not Specified",
+                "data_sharing": "Not Specified",
+                "data_retention": "Not Specified",
+                "can_user_request_deletion": "Not Specified",
+                "third_party_sharing": "Not Specified",
+                "data_broker_sharing": "Not Specified",
+                "cross_device_tracking": "Not Specified",
+                "collection_purpose": "Not Specified",
+                "microphone_access": "Not Specified",
+                "camera_access": "Not Specified"
             }
         }
     

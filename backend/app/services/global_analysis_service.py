@@ -90,6 +90,7 @@ class GlobalAnalysisService:
                     existing.summary_one_sentence = analysis_data.get('summary_one_sentence', '')
                     existing.word_frequency = analysis_data.get('word_frequency', {})
                     existing.measurements = analysis_data.get('measurements', {})
+                    existing.nutrition_label = analysis_data.get('nutrition_label', {})
                     existing.analysis_model = analysis_model
                     existing.updated_at = datetime.utcnow()
                     db.commit()
@@ -116,6 +117,7 @@ class GlobalAnalysisService:
                     summary_one_sentence=analysis_data.get('summary_one_sentence', ''),
                     word_frequency=analysis_data.get('word_frequency', {}),
                     measurements=analysis_data.get('measurements', {}),
+                    nutrition_label=analysis_data.get('nutrition_label', {}),
                     analysis_model=analysis_model
                 )
                 db.add(new_analysis)
@@ -128,4 +130,3 @@ class GlobalAnalysisService:
             logger.error(f"Error storing global analysis for {document_url}: {e}")
             db.rollback()
             raise
-

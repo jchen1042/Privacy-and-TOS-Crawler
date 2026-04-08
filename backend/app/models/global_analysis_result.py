@@ -20,6 +20,9 @@ class GlobalAnalysisResult(Base):
     word_frequency = Column(JSONB)  # Top 50 words with counts
     measurements = Column(JSONB)  # 10 text mining measurements
     analysis_model = Column(String(20), default='groq')  # 'groq' or 'gemini' (for tracking)
+    nutrition_label = Column(JSONB, nullable=True, default={})
+
+    
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
