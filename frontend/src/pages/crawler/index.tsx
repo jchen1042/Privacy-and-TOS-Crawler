@@ -259,7 +259,26 @@ const CrawlerPage: React.FC = () => {
                           </div>
                         </div>
                         {document.analysis && (
-                          <SimpleAnalysisDisplay analysis={document.analysis} />
+                          <>
+                            {/* DEBUG: Nutrition Label Data - Easily Removable */}
+                            <div className="mb-8 p-4 border border-yellow-500/50 bg-yellow-500/5 rounded-xl">
+                              <h4 className="text-yellow-500 font-bold mb-2 uppercase text-[10px] tracking-widest">Debug: Nutrition Label Data</h4>
+                              {document.analysis.nutrition_label ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-xs mt-2">
+                                  {Object.entries(document.analysis.nutrition_label).map(([key, value]) => (
+                                    <div key={key} className="flex justify-between border-b border-gray-800 pb-1">
+                                      <span className="text-gray-400 font-mono">{key}:</span>
+                                      <span className="text-white font-medium">{String(value)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-red-400 italic">No nutrition_label field found in analysis data.</p>
+                              )}
+                            </div>
+                            {/* End Debug Section */}
+                            <SimpleAnalysisDisplay analysis={document.analysis} />
+                          </>
                         )}
                       </div>
                 ))}

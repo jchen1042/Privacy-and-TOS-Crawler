@@ -105,6 +105,7 @@ class GlobalAnalysisService:
                     existing.updated_at = datetime.utcnow()
                     db.commit()
                     db.refresh(existing)
+                    _ = existing.nutrition_label
                     logger.info(f"Refreshed analysis timestamp for {document_url}")
                     return existing
             else:

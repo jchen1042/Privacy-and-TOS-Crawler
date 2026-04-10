@@ -621,16 +621,24 @@ async def get_session_results(
     document_responses = []
     for doc in documents:
         analysis = doc.analysis
-        # Safely extract global data
         g_doc = doc.global_document
         
+        # We need to find the global analysis to get the nutrition_label
+        # because the user-specific 'analysis' object doesn't have it!
+        global_analysis = None
+        if g_doc:
+            global_analysis = GlobalAnalysisService.find_analysis(
+                db=db,
+                document_url=doc.url,
+                text_hash=g_doc.text_hash
+            )
+
         document_responses.append(
             DocumentAnalysisResponse(
                 document_id=doc.id,
                 url=doc.url,
                 document_type=doc.document_type,
                 title=doc.title,
-                # Safe access to global data
                 word_count=g_doc.word_count if g_doc else 0,
                 created_at=doc.created_at,
                 analysis=AnalysisResponse(
@@ -640,6 +648,8 @@ async def get_session_results(
                     summary_one_sentence=analysis.summary_one_sentence,
                     word_frequency=analysis.word_frequency or {},
                     measurements=analysis.measurements or {},
+                    # --- ADD THIS LINE ---
+                    nutrition_label=global_analysis.nutrition_label if global_analysis else {},
                     created_at=analysis.created_at
                 ) if analysis else None
             )

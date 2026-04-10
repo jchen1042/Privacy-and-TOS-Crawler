@@ -210,7 +210,7 @@ IMPORTANT: Respond with ONLY a JSON object (no markdown, no code blocks, no expl
         "third_party_sharing": "Yes/No/Partial/Not Specified",
         "data_broker_sharing": "Yes/No/Partial/Not Specified",
         "cross_device_tracking": "Yes/No/Partial/Not Specified",
-        "collection_purpose": "Primary reasons for data collection in four words or less/Not Specified",
+        "collection_purpose": "Primary reasons for data collection in four words or less (Replace this with actual reason)/Not Specified",
         "microphone_access": "Yes/No/Partial/Not Specified",
         "camera_access": "Yes/No/Partial/Not Specified"
     }}
