@@ -32,6 +32,9 @@ This application allows users to:
 ### Document Timeline
 - **Track changes**: See how documents have changed over time, and get summary of important changes
 
+### Digital Nutrition Label
+- **Quick Summary**: Inspired by food nutritional labels, concise summary of key privacy metrics
+
 ### User Management
 **Features**:
   - Search history tracking
