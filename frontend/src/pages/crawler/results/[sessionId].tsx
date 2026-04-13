@@ -11,6 +11,7 @@ import { ArrowLeft, RefreshCw, FileText, Download, History } from 'lucide-react'
 import { apiService } from '@/services'
 import { generatePDFReport } from '@/utils/pdfGenerator'
 import { FavoriteButton } from '@/components/ui/FavoriteButton'
+import NutritionLabel from '@/components/analysis/NutritionLabel'
 
 const CrawlResultsPage: React.FC = () => {
   const router = useRouter()
@@ -280,29 +281,15 @@ const CrawlResultsPage: React.FC = () => {
                             <span>Download PDF Report</span>
                           </button>
                         </div>
-                        {/* DEBUG: Nutrition Label Data - Easily Removable */}
-                        <div className="mb-8 p-4 border border-yellow-500/50 bg-yellow-500/5 rounded-xl">
-                          <h4 className="text-yellow-500 font-bold mb-2 uppercase text-[10px] tracking-widest flex justify-between">
-                            <span>Debug: Nutrition Label Data</span>
-                            <span className="text-gray-500 font-mono lowercase">{typeof analysis.nutrition_label}</span>
-                          </h4>
-                          {analysis.nutrition_label && Object.keys(analysis.nutrition_label).length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-xs mt-2">
-                              {Object.entries(analysis.nutrition_label).map(([key, value]) => (
-                                <div key={key} className="flex justify-between border-b border-gray-800 pb-1">
-                                  <span className="text-gray-400 font-mono">{key}:</span>
-                                  <span className="text-white font-medium text-right ml-4">{String(value)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-red-400 italic">
-                              {analysis.nutrition_label ? "Field exists but is empty {}." : "Field is missing (undefined/null). Check API Response Model."}
-                            </p>
-                          )}
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                          <div className="lg:col-span-2">
+                            <SimpleAnalysisDisplay analysis={analysis} />
+                          </div>
+                          <div className="lg:col-span-1 sticky top-8">
+                            <NutritionLabel data={analysis.nutrition_label || {}} />
+                          </div>
                         </div>
-                        {/* End Debug Section */}
-                        <SimpleAnalysisDisplay analysis={analysis} />
                       </div>
                     ) : (
                       <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700">
