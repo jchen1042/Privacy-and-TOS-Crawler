@@ -28,6 +28,15 @@ class NutritionLabelSchema(BaseModel):
     collection_purpose: Optional[Any] = None
     microphone_access: Optional[Any] = None
     camera_access: Optional[Any] = None
+    local_storage_access: Optional[Any] = None
+    user_contacts_access: Optional[Any] = None
+    location_access: Optional[Any] = None
+    biometric_data_access: Optional[Any] = None
+    health_data_access: Optional[Any] = None
+    data_transmission_frequency: Optional[Any] = None
+    account_deletion_allowed: Optional[Any] = None
+    internet_required: Optional[Any] = None
+    includes_reccurring_charges: Optional[Any] = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

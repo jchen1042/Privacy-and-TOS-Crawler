@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, EyeOff, Database, Trash2, Camera, Mic, UserCheck, Globe, Clock, Target } from 'lucide-react';
+import { Shield, EyeOff, Database, Trash2, Camera, Mic, UserCheck, Globe, Clock, Target, HardDrive, Users, MapPin, Fingerprint, Activity, Wifi, UserMinus, CreditCard } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui';
 
 interface NutritionLabelProps {
@@ -14,6 +14,16 @@ interface NutritionLabelProps {
     collection_purpose?: string;
     microphone_access?: string;
     camera_access?: string;
+    local_storage_access?: string;
+    user_contacts_access?: string;
+    location_access?: string;
+    biometric_data_access?: string;
+    health_data_access?: string;
+    data_transmission_frequency?: string;
+    account_deletion_allowed?: string;
+    internet_required?: string;
+    includes_reccurring_charges?: string;
+  
   };
 }
 
@@ -21,6 +31,8 @@ const NutritionLabel: React.FC<NutritionLabelProps> = ({ data }) => {
   // Helper to color code Yes/No/Partial based on typical privacy risk
   const getStatusColor = (value: string | undefined) => {
     const v = value?.toLowerCase() || '';
+    if (v === 'not specified' || v === '' || v === 'unknown') return 'text-gray-400';
+    
     if (v.includes('yes')) return 'text-red-400'; 
     if (v.includes('no')) return 'text-green-400';
     if (v.includes('partial')) return 'text-yellow-400';
@@ -30,6 +42,8 @@ const NutritionLabel: React.FC<NutritionLabelProps> = ({ data }) => {
   // Logic for specific fields where 'Yes' is a positive user right
   const getPositiveStatusColor = (value: string | undefined) => {
     const v = value?.toLowerCase() || '';
+    if (v === 'not specified' || v === '' || v === 'unknown') return 'text-gray-400';
+
     if (v.includes('yes')) return 'text-green-400';
     if (v.includes('no')) return 'text-red-400';
     if (v.includes('partial')) return 'text-yellow-400';
@@ -60,7 +74,13 @@ const NutritionLabel: React.FC<NutritionLabelProps> = ({ data }) => {
         <div className="text-[10px] font-bold uppercase text-gray-500 mb-2 tracking-widest border-b border-gray-700 pb-1">Data Access & Tracking</div>
         <Row icon={Camera} label="Camera Access" value={data.camera_access} />
         <Row icon={Mic} label="Microphone Access" value={data.microphone_access} />
+        <Row icon={MapPin} label="Location Access" value={data.location_access} />
+        <Row icon={Fingerprint} label="Biometric Access" value={data.biometric_data_access} />
+        <Row icon={Activity} label="Health Data Access" value={data.health_data_access} />
+        <Row icon={Users} label="Contacts Access" value={data.user_contacts_access} />
+        <Row icon={HardDrive} label="Local Storage" value={data.local_storage_access} />
         <Row icon={Globe} label="Cross-device Tracking" value={data.cross_device_tracking} />
+        <Row icon={Wifi} label="Transmission" value={data.data_transmission_frequency} />
         
         <div className="text-[10px] font-bold uppercase text-gray-500 mt-6 mb-2 tracking-widest border-b border-gray-700 pb-1">Data Sharing</div>
         <Row icon={Database} label="General Sharing" value={data.data_sharing} />
@@ -70,6 +90,11 @@ const NutritionLabel: React.FC<NutritionLabelProps> = ({ data }) => {
         <div className="text-[10px] font-bold uppercase text-gray-500 mt-6 mb-2 tracking-widest border-b border-gray-700 pb-1">User Control</div>
         <Row icon={UserCheck} label="Opt-out Available" value={data.opt_out_available} isPositive={true} />
         <Row icon={Trash2} label="Request Deletion" value={data.can_user_request_deletion} isPositive={true} />
+        <Row icon={UserMinus} label="Account Deletion" value={data.account_deletion_allowed} isPositive={true} />
+
+        <div className="text-[10px] font-bold uppercase text-gray-500 mt-6 mb-2 tracking-widest border-b border-gray-700 pb-1">Service Requirements</div>
+        <Row icon={Globe} label="Internet Required" value={data.internet_required} />
+        <Row icon={CreditCard} label="Recurring Charges" value={data.includes_reccurring_charges} />
 
         <div className="mt-6 pt-4 border-t-4 border-black">
           <div className="flex flex-col gap-3">

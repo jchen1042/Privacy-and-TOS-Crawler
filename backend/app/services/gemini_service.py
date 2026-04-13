@@ -118,7 +118,16 @@ IMPORTANT: Respond with ONLY a JSON object (no markdown, no code blocks, no expl
         "cross_device_tracking": "Yes/No/Partial/Not Specified",
         "collection_purpose": "Primary reasons for data collection in four words or less/Not Specified",
         "microphone_access": "Yes/No/Partial/Not Specified",
-        "camera_access": "Yes/No/Partial/Not Specified"
+        "camera_access": "Yes/No/Partial/Not Specified",
+        "local_storage_access": "Yes/No/Partial/Not Specified",
+        "user_contacts_access": "Yes/No/Partial/Not Specified",
+        "location_access": "Yes/No/Partial/Not Specified",
+        "biometric_data_access": "Yes/No/Partial/Not Specified",
+        "health_data_access": "Yes/No/Partial/Not Specified",
+        "data_transmission_frequency": "Real-time/Periodic/On-demand/Not Specified",
+        "account_deletion_allowed": "Yes/No/Partial/Not Specified",
+        "internet_required": "Yes/No/Partial/Not Specified",
+        "includes_reccurring_charges": "Yes/No/Partial/Not Specified"
     }}
 }}
 
@@ -171,7 +180,16 @@ Document Text:
                 "cross_device_tracking": "Not Specified",
                 "collection_purpose": "Not Specified",
                 "microphone_access": "Not Specified",
-                "camera_access": "Not Specified"
+                "camera_access": "Not Specified",
+                "local_storage_access": "Not Specified",
+                "user_contacts_access": "Not Specified",
+                "location_access": "Not Specified",
+                "biometric_data_access": "Not Specified",
+                "health_data_access": "Not Specified",
+                "data_transmission_frequency": "Not Specified",
+                "account_deletion_allowed": "Not Specified",
+                "internet_required": "Not Specified",
+                "includes_reccurring_charges": "Not Specified"
             })
             
             return result
@@ -213,7 +231,16 @@ Document Text:
                 "cross_device_tracking": "Not Specified",
                 "collection_purpose": "Not Specified",
                 "microphone_access": "Not Specified",
-                "camera_access": "Not Specified"
+                "camera_access": "Not Specified",
+                "local_storage_access": "Not Specified",
+                "user_contacts_access": "Not Specified",
+                "location_access": "Not Specified",
+                "biometric_data_access": "Not Specified",
+                "health_data_access": "Not Specified",
+                "data_transmission_frequency": "Not Specified",
+                "account_deletion_allowed": "Not Specified",
+                "internet_required": "Not Specified",
+                "includes_reccurring_charges": "Not Specified"
             }
         }
     

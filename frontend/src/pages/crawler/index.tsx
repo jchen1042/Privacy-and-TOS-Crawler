@@ -11,6 +11,7 @@ import { auth } from '@/lib/firebase'
 import { getIdToken } from 'firebase/auth'
 import { apiService } from '@/services'
 import { FavoriteButton } from '@/components/ui/FavoriteButton'
+import NutritionLabel from '@/components/analysis/NutritionLabel'
 
 const CrawlerPage: React.FC = () => {
   const { sessions } = useCrawler()
@@ -259,26 +260,14 @@ const CrawlerPage: React.FC = () => {
                           </div>
                         </div>
                         {document.analysis && (
-                          <>
-                            {/* DEBUG: Nutrition Label Data - Easily Removable */}
-                            <div className="mb-8 p-4 border border-yellow-500/50 bg-yellow-500/5 rounded-xl">
-                              <h4 className="text-yellow-500 font-bold mb-2 uppercase text-[10px] tracking-widest">Debug: Nutrition Label Data</h4>
-                              {document.analysis.nutrition_label ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-xs mt-2">
-                                  {Object.entries(document.analysis.nutrition_label).map(([key, value]) => (
-                                    <div key={key} className="flex justify-between border-b border-gray-800 pb-1">
-                                      <span className="text-gray-400 font-mono">{key}:</span>
-                                      <span className="text-white font-medium">{String(value)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-xs text-red-400 italic">No nutrition_label field found in analysis data.</p>
-                              )}
+                          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+                            <div className="xl:col-span-2">
+                              <SimpleAnalysisDisplay analysis={document.analysis} />
                             </div>
-                            {/* End Debug Section */}
-                            <SimpleAnalysisDisplay analysis={document.analysis} />
-                          </>
+                            <div className="xl:col-span-1">
+                              <NutritionLabel data={document.analysis.nutrition_label || {}} />
+                            </div>
+                          </div>
                         )}
                       </div>
                 ))}
