@@ -235,53 +235,49 @@ const CrawlResultsPage: React.FC = () => {
                             >
                               View History
                             </Button>
+                            {analysis && (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => {
+                                  const analysisResult = {
+                                    document_id: document.document_id || '',
+                                    summary_100: analysis.summary_100_words || '',
+                                    summary_sentence: analysis.summary_one_sentence || '',
+                                    word_frequency: analysis.word_frequency || {},
+                                    measurements: analysis.measurements || {},
+                                    created_at: analysis.created_at || new Date().toISOString()
+                                  }
+                                  const docForPDF = {
+                                    id: document.document_id || '',
+                                    url: document.url || '',
+                                    domain: document.url ? new URL(document.url).hostname : '',
+                                    document_type: (document.document_type === 'terms_of_service' ? 'tos' : 'privacy') as 'tos' | 'privacy',
+                                    title: document.title || '',
+                                    content: '',
+                                    word_count: document.word_count || 0,
+                                    sentence_count: analysis.measurements?.sentence_count || 0,
+                                    created_at: document.created_at || new Date().toISOString(),
+                                    updated_at: document.updated_at || new Date().toISOString()
+                                  }
+                                  generatePDFReport({
+                                    analysis: analysisResult,
+                                    document: docForPDF,
+                                    sessionUrl: document.url
+                                  })
+                                }}
+                                leftIcon={<Download className="h-4 w-4" />}
+                              >
+                                Download PDF
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                     
                     {analysis ? (
-                      <div className="mt-4">
-                        <div className="mb-4 flex justify-end">
-                          <button
-                            onClick={() => {
-                              // Convert analysis to match AnalysisResult type
-                              const analysisResult = {
-                                document_id: document.document_id || '',
-                                summary_100: analysis.summary_100_words || '',
-                                summary_sentence: analysis.summary_one_sentence || '',
-                                word_frequency: analysis.word_frequency || {},
-                                measurements: analysis.measurements || {},
-                                created_at: analysis.created_at || new Date().toISOString()
-                              }
-                              
-                              // Convert document to match Document type
-                              const docForPDF = {
-                                id: document.document_id || '',
-                                url: document.url || '',
-                                domain: document.url ? new URL(document.url).hostname : '',
-                                document_type: (document.document_type === 'terms_of_service' ? 'tos' : 'privacy') as 'tos' | 'privacy',
-                                title: document.title || '',
-                                content: '',
-                                word_count: document.word_count || 0,
-                                sentence_count: analysis.measurements?.sentence_count || 0,
-                                created_at: document.created_at || new Date().toISOString(),
-                                updated_at: document.updated_at || new Date().toISOString()
-                              }
-                              
-                              generatePDFReport({
-                                analysis: analysisResult,
-                                document: docForPDF,
-                                sessionUrl: document.url
-                              })
-                            }}
-                            className="flex items-center space-x-2 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                          >
-                            <Download className="h-4 w-4" />
-                            <span>Download PDF Report</span>
-                          </button>
-                        </div>
-
+                      <div className="mt-8">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                           <div className="lg:col-span-2">
                             <SimpleAnalysisDisplay analysis={analysis} />

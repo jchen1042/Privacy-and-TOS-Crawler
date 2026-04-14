@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, EyeOff, Database, Trash2, Camera, Mic, UserCheck, Globe, Clock, Target, HardDrive, Users, MapPin, Fingerprint, Activity, Wifi, UserMinus, CreditCard } from 'lucide-react';
+import { Shield, EyeOff, Database, Trash2, Camera, Mic, UserCheck, Globe, Clock, Target, HardDrive, Users, MapPin, Fingerprint, Activity, Wifi, UserMinus, CreditCard, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui';
 
 interface NutritionLabelProps {
@@ -28,6 +28,14 @@ interface NutritionLabelProps {
 }
 
 const NutritionLabel: React.FC<NutritionLabelProps> = ({ data }) => {
+  const [expanded, setExpanded] = React.useState({
+    access: true,
+    sharing: true,
+    control: true,
+    requirements: true,
+    details: true
+  });
+
   // Helper to color code Yes/No/Partial based on typical privacy risk
   const getStatusColor = (value: string | undefined) => {
     const v = value?.toLowerCase() || '';
@@ -63,61 +71,108 @@ const NutritionLabel: React.FC<NutritionLabelProps> = ({ data }) => {
   );
 
   return (
-    <Card className="bg-black/40 border-2 border-white/10 rounded-none overflow-hidden max-w-md mx-auto font-sans shadow-2xl">
-      <div className="bg-white text-black p-4 text-center">
-        <h2 className="text-3xl font-black italic uppercase leading-none tracking-tighter">Privacy Facts</h2>
-        <div className="h-1 bg-black mt-1" />
-        <p className="text-[10px] font-bold mt-1 uppercase tracking-widest">Digital Nutrition Label</p>
+    <Card className="bg-gray-900/40 border border-gray-800 rounded-[2.5rem] overflow-hidden max-w-md mx-auto font-sans shadow-2xl backdrop-blur-md">
+      <div className="bg-blue-500/5 border-b border-gray-800 p-6 text-center">
+        <h2 className="text-2xl font-bold text-white uppercase tracking-widest">Digital Nutrition Facts</h2>
       </div>
       
-      <CardContent className="p-4 space-y-1">
-        <div className="text-[10px] font-bold uppercase text-gray-500 mb-2 tracking-widest border-b border-gray-700 pb-1">Data Access & Tracking</div>
-        <Row icon={Camera} label="Camera Access" value={data.camera_access} />
-        <Row icon={Mic} label="Microphone Access" value={data.microphone_access} />
-        <Row icon={MapPin} label="Location Access" value={data.location_access} />
-        <Row icon={Fingerprint} label="Biometric Access" value={data.biometric_data_access} />
-        <Row icon={Activity} label="Health Data Access" value={data.health_data_access} />
-        <Row icon={Users} label="Contacts Access" value={data.user_contacts_access} />
-        <Row icon={HardDrive} label="Local Storage" value={data.local_storage_access} />
-        <Row icon={Globe} label="Cross-device Tracking" value={data.cross_device_tracking} />
-        <Row icon={Wifi} label="Transmission" value={data.data_transmission_frequency} />
+      <CardContent className="p-6 pt-8 space-y-2">
+        <button 
+          onClick={() => setExpanded(prev => ({ ...prev, access: !prev.access }))}
+          className="w-full flex items-center justify-between text-[10px] font-bold uppercase text-gray-500 mb-2 tracking-widest border-b border-gray-700 pb-1 hover:text-white transition-colors group outline-none"
+        >
+          <span>Data Access & Tracking</span>
+          {expanded.access ? <ChevronDown size={14} className="opacity-50 group-hover:opacity-100" /> : <ChevronRight size={14} className="opacity-50 group-hover:opacity-100" />}
+        </button>
+        {expanded.access && (
+          <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+            <Row icon={Camera} label="Camera Access" value={data.camera_access} />
+            <Row icon={Mic} label="Microphone Access" value={data.microphone_access} />
+            <Row icon={MapPin} label="Location Access" value={data.location_access} />
+            <Row icon={Fingerprint} label="Biometric Access" value={data.biometric_data_access} />
+            <Row icon={Activity} label="Health Data Access" value={data.health_data_access} />
+            <Row icon={Users} label="Contacts Access" value={data.user_contacts_access} />
+            <Row icon={HardDrive} label="Local Storage" value={data.local_storage_access} />
+            <Row icon={Globe} label="Cross-device Tracking" value={data.cross_device_tracking} />
+            <Row icon={Wifi} label="Transmission" value={data.data_transmission_frequency} />
+          </div>
+        )}
         
-        <div className="text-[10px] font-bold uppercase text-gray-500 mt-6 mb-2 tracking-widest border-b border-gray-700 pb-1">Data Sharing</div>
-        <Row icon={Database} label="General Sharing" value={data.data_sharing} />
-        <Row icon={Shield} label="Third-party Sharing" value={data.third_party_sharing} />
-        <Row icon={EyeOff} label="Data Brokers" value={data.data_broker_sharing} />
+        <button 
+          onClick={() => setExpanded(prev => ({ ...prev, sharing: !prev.sharing }))}
+          className="w-full flex items-center justify-between text-[10px] font-bold uppercase text-gray-500 mt-6 mb-2 tracking-widest border-b border-gray-700 pb-1 hover:text-white transition-colors group outline-none"
+        >
+          <span>Data Sharing</span>
+          {expanded.sharing ? <ChevronDown size={14} className="opacity-50 group-hover:opacity-100" /> : <ChevronRight size={14} className="opacity-50 group-hover:opacity-100" />}
+        </button>
+        {expanded.sharing && (
+          <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+            <Row icon={Database} label="General Sharing" value={data.data_sharing} />
+            <Row icon={Shield} label="Third-party Sharing" value={data.third_party_sharing} />
+            <Row icon={EyeOff} label="Data Brokers" value={data.data_broker_sharing} />
+          </div>
+        )}
 
-        <div className="text-[10px] font-bold uppercase text-gray-500 mt-6 mb-2 tracking-widest border-b border-gray-700 pb-1">User Control</div>
-        <Row icon={UserCheck} label="Opt-out Available" value={data.opt_out_available} isPositive={true} />
-        <Row icon={Trash2} label="Request Deletion" value={data.can_user_request_deletion} isPositive={true} />
-        <Row icon={UserMinus} label="Account Deletion" value={data.account_deletion_allowed} isPositive={true} />
+        <button 
+          onClick={() => setExpanded(prev => ({ ...prev, control: !prev.control }))}
+          className="w-full flex items-center justify-between text-[10px] font-bold uppercase text-gray-500 mt-6 mb-2 tracking-widest border-b border-gray-700 pb-1 hover:text-white transition-colors group outline-none"
+        >
+          <span>User Control</span>
+          {expanded.control ? <ChevronDown size={14} className="opacity-50 group-hover:opacity-100" /> : <ChevronRight size={14} className="opacity-50 group-hover:opacity-100" />}
+        </button>
+        {expanded.control && (
+          <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+            <Row icon={UserCheck} label="Opt-out Available" value={data.opt_out_available} isPositive={true} />
+            <Row icon={Trash2} label="Request Deletion" value={data.can_user_request_deletion} isPositive={true} />
+            <Row icon={UserMinus} label="Account Deletion" value={data.account_deletion_allowed} isPositive={true} />
+          </div>
+        )}
 
-        <div className="text-[10px] font-bold uppercase text-gray-500 mt-6 mb-2 tracking-widest border-b border-gray-700 pb-1">Service Requirements</div>
-        <Row icon={Globe} label="Internet Required" value={data.internet_required} />
-        <Row icon={CreditCard} label="Recurring Charges" value={data.includes_reccurring_charges} />
+        <button 
+          onClick={() => setExpanded(prev => ({ ...prev, requirements: !prev.requirements }))}
+          className="w-full flex items-center justify-between text-[10px] font-bold uppercase text-blue-500/50 mt-6 mb-2 tracking-widest border-b border-gray-800 pb-1 hover:text-white transition-colors group outline-none"
+        >
+          <span>Service Requirements</span>
+          {expanded.requirements ? <ChevronDown size={14} className="opacity-50 group-hover:opacity-100" /> : <ChevronRight size={14} className="opacity-50 group-hover:opacity-100" />}
+        </button>
+        {expanded.requirements && (
+          <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+            <Row icon={Globe} label="Internet Required" value={data.internet_required} />
+            <Row icon={CreditCard} label="Recurring Charges" value={data.includes_reccurring_charges} />
+          </div>
+        )}
 
-        <div className="mt-6 pt-4 border-t-4 border-black">
-          <div className="flex flex-col gap-3">
+        <div className="mt-6 pt-6 border-t border-gray-800">
+          <button 
+            onClick={() => setExpanded(prev => ({ ...prev, details: !prev.details }))}
+            className="w-full flex items-center justify-between text-[10px] font-bold uppercase text-blue-500/50 mb-4 tracking-widest hover:text-white transition-colors group outline-none"
+          >
+            <span>Policy Insights</span>
+            {expanded.details ? <ChevronDown size={14} className="opacity-50 group-hover:opacity-100" /> : <ChevronRight size={14} className="opacity-50 group-hover:opacity-100" />}
+          </button>
+          {expanded.details && (
+            <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="flex gap-2 items-start">
-              <Clock size={14} className="text-blue-400 mt-0.5 shrink-0" />
+              <Clock size={14} className="text-blue-500/70 mt-0.5 shrink-0" />
               <div>
-                <span className="text-[10px] font-bold uppercase text-gray-500 block">Retention Period</span>
+                <span className="text-[10px] font-bold uppercase text-blue-500/50 block">Retention Period</span>
                 <span className="text-xs text-white leading-tight italic">
                   {data.data_retention && data.data_retention !== "Not Specified" ? data.data_retention : "Refer to document for specific timelines."}
                 </span>
               </div>
             </div>
             <div className="flex gap-2 items-start">
-              <Target size={14} className="text-blue-400 mt-0.5 shrink-0" />
+              <Target size={14} className="text-blue-500/70 mt-0.5 shrink-0" />
               <div>
-                <span className="text-[10px] font-bold uppercase text-gray-500 block">Collection Purpose</span>
+                <span className="text-[10px] font-bold uppercase text-blue-500/50 block">Collection Purpose</span>
                 <span className="text-xs text-white leading-tight font-medium">
                   {data.collection_purpose || 'General service improvement and operation.'}
                 </span>
               </div>
             </div>
+            </div>
+          )}
           </div>
-        </div>
       </CardContent>
     </Card>
   );
