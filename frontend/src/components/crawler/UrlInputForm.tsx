@@ -13,7 +13,7 @@ const UrlInputForm: React.FC = () => {
   const [forceRefresh, setForceRefresh] = useState<boolean>(false)
   const [isAdmin, setIsAdmin] = useState<boolean>(false)
   const { isLoading, error } = useCrawler()
-  const { startCrawl } = useCrawlerActions()
+  const { startCrawl, getCrawlHistory } = useCrawlerActions()
   const documentTypes = useDocumentTypes()
   const { user } = useAuthStore()
   
@@ -71,6 +71,8 @@ const UrlInputForm: React.FC = () => {
     const success = await startCrawl(request)
     
     if (success) {
+      // Refresh history immediately so the dashboard updates
+      await getCrawlHistory()
       toast.success('Analysis started! Report is being saved...', {
         duration: 3000,
         position: 'top-center',
@@ -213,6 +215,7 @@ const UrlInputForm: React.FC = () => {
             <p>• Analysis typically takes 30-60 seconds</p>
             <p>• We'll search for TOS and Privacy Policy links</p>
             <p>• Results will be saved to your account</p>
+            <p>• Open a previous analysis via the right sidebar for full analysis results</p>
             {isAdmin && forceRefresh && (
               <p className="text-yellow-400 mt-2">⚠️ Force refresh enabled - will update global cache for all users</p>
             )}

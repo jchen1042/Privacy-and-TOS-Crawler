@@ -12,9 +12,10 @@ import { getIdToken } from 'firebase/auth'
 import { apiService } from '@/services'
 import { FavoriteButton } from '@/components/ui/FavoriteButton'
 import NutritionLabel from '@/components/analysis/NutritionLabel'
+import CrawlStatusCard from '@/components/crawler/CrawlStatusCard'
 
 const CrawlerPage: React.FC = () => {
-  const { sessions } = useCrawler()
+  const { sessions, isLoading: storeLoading } = useCrawler()
   const { getCrawlHistory } = useCrawlerActions()
   const router = useRouter()
   const [latestResults, setLatestResults] = useState<any>(null)
@@ -73,11 +74,30 @@ const CrawlerPage: React.FC = () => {
     return () => clearInterval(tokenRefreshInterval)
   }, [getCrawlHistory])
 
-  // Get the most recent completed session for Load button
-  const getLatestCompletedSession = () => {
-    const validSessions = sessions.filter(s => s && s.id && s.status)
-    return validSessions.find(s => s.status === 'completed')
-  }
+  const latestSession = sessions[0]
+
+  // Poll for updates if the latest session is still in progress
+  useEffect(() => {
+    const isActive = latestSession && (latestSession.status === 'processing' || latestSession.status === 'pending')
+    
+    let pollInterval: NodeJS.Timeout
+    if (isActive) {
+      pollInterval = setInterval(() => {
+        getCrawlHistory()
+      }, 3000)
+    }
+    
+    return () => {
+      if (pollInterval) clearInterval(pollInterval)
+    }
+  }, [latestSession?.status, getCrawlHistory])
+
+  // Clear results if a new crawl starts to show the progress card instead
+  useEffect(() => {
+    if (latestSession && (latestSession.status === 'processing' || latestSession.status === 'pending')) {
+      setLatestResults(null)
+    }
+  }, [latestSession?.id, latestSession?.status])
 
   const loadSessionResults = async (sessionId: string) => {
     setLoadingResults(true)
@@ -166,28 +186,33 @@ const CrawlerPage: React.FC = () => {
           </div>
 
           {/* Load Button Section */}
-          {getLatestCompletedSession() && !latestResults && !loadingResults && (
-            <div className="mt-12">
-              <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700">
-                <CardContent className="p-8 text-center">
-                  <p className="text-gray-300 mb-4">
-                    Analysis completed! Click the button below to load the results.
-                  </p>
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    onClick={() => {
-                      const session = getLatestCompletedSession()
-                      if (session && session.id) {
-                        loadSessionResults(session.id)
-                      }
-                    }}
-                    leftIcon={<RefreshCw className="h-5 w-5" />}
-                  >
-                    Load Analysis Results
-                  </Button>
-                </CardContent>
-              </Card>
+          {latestSession && !latestResults && !loadingResults && (
+            <div className="mt-12 max-w-2xl mx-auto">
+              {latestSession.status === 'completed' ? (
+                <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700">
+                  <CardContent className="p-8 text-center">
+                    <p className="text-gray-300 mb-4">
+                      Analysis completed! Click the button below to load the results.
+                    </p>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={() => loadSessionResults(latestSession.id)}
+                      leftIcon={<RefreshCw className="h-5 w-5" />}
+                    >
+                      Load Analysis Results
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (latestSession.status === 'processing' || latestSession.status === 'pending') ? (
+                <div className="space-y-4">
+                  <div className="text-center text-gray-400 text-sm animate-pulse flex items-center justify-center gap-2">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Analysis in progress...</span>
+                  </div>
+                  <CrawlStatusCard session={latestSession} />
+                </div>
+              ) : null}
             </div>
           )}
 
