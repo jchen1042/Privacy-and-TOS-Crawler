@@ -271,7 +271,7 @@ const CrawlerPage: React.FC = () => {
                             <div className="flex items-center space-x-2">
                               <FavoriteButton
                                 documentId={document.document_id}
-                                initialIsFavorite={false}
+                                initialIsFavorite={document.is_favorite || false}
                               />
                               <Button
                                 variant="outline"

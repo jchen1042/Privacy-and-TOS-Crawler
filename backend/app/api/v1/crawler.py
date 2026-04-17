@@ -8,6 +8,7 @@ from app.models.user import User
 from app.models.crawl_session import CrawlSession, SessionStatus
 from app.models.document import Document
 from app.models.document_version import DocumentVersion
+from app.models.user_favorite import UserFavorite
 from app.models.analysis_result import AnalysisResult
 from app.schemas.crawler import (
     CrawlRequest,
@@ -623,6 +624,14 @@ async def get_session_results(
         analysis = doc.analysis
         g_doc = doc.global_document
         
+        # Check if this document is favorited by the current user
+        is_favorite = False
+        if doc.global_document_id:
+            is_favorite = db.query(UserFavorite).filter(
+                UserFavorite.user_id == current_user.id,
+                UserFavorite.global_document_id == doc.global_document_id
+            ).first() is not None
+
         # We need to find the global analysis to get the nutrition_label
         # because the user-specific 'analysis' object doesn't have it!
         global_analysis = None
@@ -641,6 +650,7 @@ async def get_session_results(
                 title=doc.title,
                 word_count=g_doc.word_count if g_doc else 0,
                 created_at=doc.created_at,
+                is_favorite=is_favorite,
                 analysis=AnalysisResponse(
                     id=analysis.id,
                     document_id=analysis.document_id,

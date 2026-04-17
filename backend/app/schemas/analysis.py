@@ -109,6 +109,7 @@ class DocumentAnalysisResponse(BaseModel):
     title: str | None
     word_count: int
     created_at: datetime
+    is_favorite: bool = False
     analysis: AnalysisResponse | None = None
 
     model_config = ConfigDict(from_attributes=True)

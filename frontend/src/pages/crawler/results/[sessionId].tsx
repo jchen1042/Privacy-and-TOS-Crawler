@@ -225,7 +225,7 @@ const CrawlResultsPage: React.FC = () => {
                           <div className="flex items-center space-x-2">
                             <FavoriteButton
                               documentId={document.document_id}
-                              initialIsFavorite={false} // Cannot determine initial state from this API endpoint
+                              initialIsFavorite={document.is_favorite || false}
                             />
                             <Button
                               variant="outline"

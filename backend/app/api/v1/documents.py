@@ -122,16 +122,19 @@ async def get_document(
     # Get analysis if available
     analysis = document.analysis
     
-    # Update last_viewed_version if this document is favorited by the user
+    # Check if this document is favorited and update last_viewed_version
+    is_favorite = False
     if document.global_document_id:
         favorite = db.query(UserFavorite).filter(
             UserFavorite.user_id == current_user.id,
             UserFavorite.global_document_id == document.global_document_id
         ).first()
         
-        if favorite and document.global_document and document.global_document.version > favorite.last_viewed_version:
-            favorite.last_viewed_version = document.global_document.version
-            db.commit()
+        if favorite:
+            is_favorite = True
+            if document.global_document and document.global_document.version > favorite.last_viewed_version:
+                favorite.last_viewed_version = document.global_document.version
+                db.commit()
 
     # Get global analysis for nutrition label
     global_analysis = document.global_document.analysis[0] if document.global_document and document.global_document.analysis else None
@@ -143,6 +146,7 @@ async def get_document(
         title=document.title,
         word_count=document.global_document.word_count if document.global_document else 0,
         created_at=document.created_at,
+        is_favorite=is_favorite,
         analysis=AnalysisResponse(
             id=analysis.id,
             document_id=analysis.document_id,
