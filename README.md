@@ -35,6 +35,9 @@ This application allows users to:
 ### Digital Nutrition Label
 - **Quick Summary**: Inspired by food nutritional labels, concise summary of key privacy metrics
 
+### Autonomous Updates
+- **Asynchronous Recrawling**: System will automatically check for document updates
+
 ### User Management
 **Features**:
   - Search history tracking
