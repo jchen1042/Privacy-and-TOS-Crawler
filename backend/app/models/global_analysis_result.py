@@ -1,5 +1,5 @@
 """Global analysis result model for shared analysis cache"""
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Index
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Index, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -21,6 +21,8 @@ class GlobalAnalysisResult(Base):
     measurements = Column(JSONB)  # 10 text mining measurements
     analysis_model = Column(String(20), default='groq')  # 'groq' or 'gemini' (for tracking)
     nutrition_label = Column(JSONB, nullable=True, default={})
+    is_monitored = Column(Boolean, default=True, index=True)
+    last_automated_check = Column(DateTime(timezone=True), nullable=True)
 
     
     
@@ -39,4 +41,3 @@ class GlobalAnalysisResult(Base):
 
     def __repr__(self):
         return f"<GlobalAnalysisResult(id={self.id}, document_url={self.document_url}, model={self.analysis_model})>"
-

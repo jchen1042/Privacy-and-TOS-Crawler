@@ -21,7 +21,6 @@ class Settings(BaseSettings):
     
 
     # Redis
-    #REDIS_URL: str = "redis://localhost:6379"
     REDIS_URL: str = ""
     
     # Firebase Admin SDK

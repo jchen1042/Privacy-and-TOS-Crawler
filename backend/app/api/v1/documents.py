@@ -59,6 +59,11 @@ async def get_favorites(
             Document.global_document_id == global_doc.id
         ).order_by(Document.created_at.desc()).first()
 
+        # Check if there is a newer version available since the user last favorited/viewed it
+        is_updated = False
+        if global_doc.version and fav.last_viewed_version and global_doc.version > fav.last_viewed_version:
+            is_updated = True
+
         response_documents.append(
             FavoriteDocumentResponse(
                 id=fav.id,
@@ -70,7 +75,8 @@ async def get_favorites(
                 summary=global_analysis.summary_one_sentence if global_analysis else None,
                 description=global_analysis.summary_100_words if global_analysis else None,
                 document_type=global_doc.document_type,
-                created_at=fav.created_at
+                created_at=fav.created_at,
+                is_updated=is_updated 
             )
         )
     
@@ -116,6 +122,20 @@ async def get_document(
     # Get analysis if available
     analysis = document.analysis
     
+    # Update last_viewed_version if this document is favorited by the user
+    if document.global_document_id:
+        favorite = db.query(UserFavorite).filter(
+            UserFavorite.user_id == current_user.id,
+            UserFavorite.global_document_id == document.global_document_id
+        ).first()
+        
+        if favorite and document.global_document and document.global_document.version > favorite.last_viewed_version:
+            favorite.last_viewed_version = document.global_document.version
+            db.commit()
+
+    # Get global analysis for nutrition label
+    global_analysis = document.global_document.analysis[0] if document.global_document and document.global_document.analysis else None
+
     return DocumentAnalysisResponse(
         document_id=document.id,
         url=document.url,
@@ -130,6 +150,7 @@ async def get_document(
             summary_one_sentence=analysis.summary_one_sentence,
             word_frequency=analysis.word_frequency or {},
             measurements=analysis.measurements or {},
+            nutrition_label=global_analysis.nutrition_label if global_analysis else {},
             created_at=analysis.created_at
         ) if analysis else None
     )

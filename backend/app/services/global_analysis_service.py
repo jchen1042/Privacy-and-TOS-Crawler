@@ -1,8 +1,8 @@
 """Service for managing global analysis result cache"""
-from typing import Optional, Dict, Any
-from datetime import datetime
+from typing import Optional, Dict, Any, List
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, or_, func
 from app.models.global_analysis_result import GlobalAnalysisResult
 from app.models.global_document import GlobalDocument
 import logging
@@ -50,6 +50,25 @@ class GlobalAnalysisService:
             return None
     
     @staticmethod
+    def get_stale_monitored_urls(
+        db: Session, 
+        older_than_hours: int = 24,
+        limit: int = 50
+    ) -> List[GlobalAnalysisResult]:
+        """Find monitored documents that haven't been checked recently"""
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=older_than_hours)
+        
+        return db.query(GlobalAnalysisResult).filter(
+            and_(
+                GlobalAnalysisResult.is_monitored == True,
+                or_(
+                    GlobalAnalysisResult.last_automated_check == None,
+                    GlobalAnalysisResult.last_automated_check < cutoff
+                )
+            )
+        ).limit(limit).all()
+
+    @staticmethod
     def store_analysis(
         db: Session,
         global_document_id: str,
@@ -92,7 +111,8 @@ class GlobalAnalysisService:
                     existing.measurements = analysis_data.get('measurements', {})
                     existing.nutrition_label = analysis_data.get('nutrition_label', {})
                     existing.analysis_model = analysis_model
-                    existing.updated_at = datetime.utcnow()
+                    existing.last_automated_check = func.now()
+                    existing.updated_at = func.now()
                     db.commit()
                     db.refresh(existing)
                     if force_replace:
@@ -102,7 +122,8 @@ class GlobalAnalysisService:
                     return existing
                 else:
                     # Content unchanged and not force_replace - just refresh timestamp
-                    existing.updated_at = datetime.utcnow()
+                    existing.updated_at = func.now()
+                    existing.last_automated_check = func.now()
                     db.commit()
                     db.refresh(existing)
                     _ = existing.nutrition_label
@@ -119,7 +140,8 @@ class GlobalAnalysisService:
                     word_frequency=analysis_data.get('word_frequency', {}),
                     measurements=analysis_data.get('measurements', {}),
                     nutrition_label=analysis_data.get('nutrition_label', {}),
-                    analysis_model=analysis_model
+                    analysis_model=analysis_model,
+                    last_automated_check=func.now()
                 )
                 db.add(new_analysis)
                 db.commit()
