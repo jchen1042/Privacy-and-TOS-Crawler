@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 from datetime import datetime, timezone
 from sqlalchemy import func
 from app.database.base import SessionLocal
@@ -15,11 +16,22 @@ from celery import Celery
 logger = logging.getLogger(__name__)
 
 # Initialize Celery using Redis environment
-broker_conf = {}
-if settings.REDIS_URL.startswith('rediss://'):
-    broker_conf = {'broker_use_ssl': {'ssl_cert_reqs': None}}
+celery_app = Celery('monitoring', broker=settings.REDIS_URL)
 
-celery_app = Celery('monitoring', broker=settings.REDIS_URL, **broker_conf)
+# Upstash/Serverless specific configurations
+celery_conf = {
+    'broker_connection_retry_on_startup': True,
+    'worker_prefetch_multiplier': 1,  # Don't hoard tasks, better for serverless/cloud environments
+    'broker_transport_options': {
+        'visibility_timeout': 3600,  # 1 hour
+    }
+}
+
+if settings.REDIS_URL.startswith('rediss://'):
+    celery_conf['broker_use_ssl'] = {'ssl_cert_reqs': None}
+    celery_conf['redis_backend_use_ssl'] = {'ssl_cert_reqs': None}
+
+celery_app.conf.update(celery_conf)
 
 # Configure the schedule
 celery_app.conf.beat_schedule = {
@@ -44,7 +56,8 @@ async def run_monitoring_cycle(batch_limit: int = 10):
     """
     db = SessionLocal()
     try:
-        # Fetch stale documents (e.g., checked more than 24 hours ago by default)
+        # Fetch stale documents (e.g., checked more than 24 hours ago)
+        # limit the batch size to avoid overwhelming the system
         stale_docs = GlobalAnalysisService.get_stale_monitored_urls(db, older_than_hours=24, limit=batch_limit)
         
         if not stale_docs:
@@ -57,6 +70,10 @@ async def run_monitoring_cycle(batch_limit: int = 10):
         
         async with CrawlerService() as crawler:
             for analysis_result in stale_docs:
+                # Add a small random delay (2-5s) between requests to avoid 
+                # burst-pattern bot detection.
+                await asyncio.sleep(random.uniform(2.0, 5.0))
+                
                 try:
                     g_doc = analysis_result.global_document
                     logger.info(f"Monitoring: Fetching live content for {analysis_result.document_url}")
@@ -105,6 +122,20 @@ async def run_monitoring_cycle(batch_limit: int = 10):
                             title=live_doc_data['title'],
                             word_count=live_doc_data['word_count']
                         )
+                        
+                        # Ensure changes found via automation are recorded in the 
+                        # version history, otherwise the 'History' UI will be out of sync.
+                        document_version = DocumentVersion(
+                            global_document_id=updated_g_doc.id,
+                            raw_text=live_doc_data['raw_text'],
+                            text_hash=live_doc_data['text_hash'],
+                            word_count=live_doc_data['word_count'],
+                            change_description=change_analysis.get('change_description'),
+                            analysis_summary=change_analysis.get('analysis_summary'),
+                            version_number=updated_g_doc.version
+                        )
+                        db.add(document_version)
+                        db.flush()
 
                         # Store the refreshed analysis (this handles last_automated_check internally now)
                         GlobalAnalysisService.store_analysis(
