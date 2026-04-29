@@ -182,6 +182,32 @@ class ApiService {
     }
   }
 
+  // Standard HTTP methods
+  async get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return this.request<T>({
+      method: 'GET',
+      url,
+      ...config
+    })
+  }
+
+  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return this.request<T>({
+      method: 'POST',
+      url,
+      data,
+      ...config
+    })
+  }
+
+  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return this.request<T>({
+      method: 'DELETE',
+      url,
+      ...config
+    })
+  }
+
   // Authentication methods
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await this.request<AuthResponse>({

@@ -117,8 +117,13 @@ const CrawlResultsPage: React.FC = () => {
     setIsTyping(true);
     
     try {
-      const res = await apiService.post(`/documents/${activeChatDoc.document_id}/chat`, { question: q });
-      setChatHistory(prev => [...prev, { q, a: res.data.answer }]);
+      const res = await apiService.post<{ answer: string }>(
+        `/documents/${activeChatDoc.document_id}/chat`, 
+        { question: q }
+      );
+
+      const answer = res.success && res.data ? res.data.answer : "I couldn't get a response from the assistant.";
+      setChatHistory(prev => [...prev, { q, a: answer }]);
     } catch (err) {
       setChatHistory(prev => [...prev, { q, a: "Sorry, I encountered an error processing your request." }]);
     } finally {
