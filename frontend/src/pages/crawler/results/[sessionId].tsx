@@ -4,10 +4,10 @@ import Layout from '@/components/layout/Layout'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import CrawlStatusCard from '@/components/crawler/CrawlStatusCard'
 import SimpleAnalysisDisplay from '@/components/analysis/SimpleAnalysisDisplay'
-import { Card, CardContent, CardHeader, CardTitle, Spinner, Button} from '@/components/ui'
+import { Card, CardContent, CardHeader, CardTitle, Spinner, Button, Input} from '@/components/ui'
 import { useCrawler } from '@/store/crawlerStore'
 import { CrawlSession } from '@/types'
-import { ArrowLeft, RefreshCw, FileText, Download, History } from 'lucide-react'
+import { ArrowLeft, RefreshCw, FileText, Download, History, MessageSquare, Send, X, Sparkles } from 'lucide-react'
 import { apiService } from '@/services'
 import { generatePDFReport } from '@/utils/pdfGenerator'
 import { FavoriteButton } from '@/components/ui/FavoriteButton'
@@ -23,6 +23,13 @@ const CrawlResultsPage: React.FC = () => {
   const [analyses, setAnalyses] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Chat State
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [activeChatDoc, setActiveChatDoc] = useState<any>(null)
+  const [chatQuestion, setChatQuestion] = useState('')
+  const [chatHistory, setChatHistory] = useState<{q: string, a: string}[]>([])
+  const [isTyping, setIsTyping] = useState(false)
 
   useEffect(() => {
     if (sessionId && typeof sessionId === 'string') {
@@ -100,6 +107,23 @@ const CrawlResultsPage: React.FC = () => {
 
   const handleViewDocument = (documentId: string) => {
     router.push(`/documents/${documentId}`)
+  }
+
+  const handleSendChat = async () => {
+    if (!chatQuestion.trim() || !activeChatDoc) return;
+    
+    const q = chatQuestion;
+    setChatQuestion('');
+    setIsTyping(true);
+    
+    try {
+      const res = await apiService.post(`/documents/${activeChatDoc.document_id}/chat`, { question: q });
+      setChatHistory(prev => [...prev, { q, a: res.data.answer }]);
+    } catch (err) {
+      setChatHistory(prev => [...prev, { q, a: "Sorry, I encountered an error processing your request." }]);
+    } finally {
+      setIsTyping(false);
+    }
   }
 
   if (isLoading) {
@@ -183,6 +207,7 @@ const CrawlResultsPage: React.FC = () => {
             <div className="space-y-24">
               {documents.map((document, index) => {
                 const analysis = document.analysis
+                const isSelectedForChat = activeChatDoc?.document_id === document.document_id;
                 console.log("Full Analysis Object:", analysis);
                 console.log("Nutrition Label specifically:", analysis?.nutrition_label);
                 return (
@@ -235,6 +260,19 @@ const CrawlResultsPage: React.FC = () => {
                             >
                               View History
                             </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setActiveChatDoc(document);
+                                  setIsChatOpen(true);
+                                  setChatHistory([]);
+                                }}
+                                className={isSelectedForChat ? 'border-blue-500 bg-blue-500/10' : ''}
+                                leftIcon={<Sparkles className="h-4 w-4" />}
+                              >
+                                Privacy Assistant
+                              </Button>
                             {analysis && (
                               <Button
                                 variant="primary"
@@ -335,6 +373,101 @@ const CrawlResultsPage: React.FC = () => {
             </Card>
           )}
         </div>
+
+        <div className={`fixed top-20 bottom-0 right-0 w-full sm:w-96 bg-gray-900 border-l border-t border-gray-700 shadow-2xl z-[2147483647] transform transition-transform duration-300 ease-in-out ${isChatOpen ? 'translate-x-0' : 'translate-x-full'} rounded-tl-3xl`}>
+          <div className="flex flex-col h-full">
+            <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-gray-800/50 rounded-tl-3xl">
+              <div className="flex items-center space-x-2">
+                <MessageSquare className="h-5 w-5 text-blue-400" />
+                <h3 className="font-bold text-white truncate max-w-[200px]">
+                  Chat: {activeChatDoc?.title || 'Document'}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsChatOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {chatHistory.length === 0 && !isTyping && (
+                <div className="text-center py-12 px-4">
+                  <div className="bg-blue-500/10 p-4 rounded-full w-fit mx-auto mb-4">
+                    <MessageSquare className="h-8 w-8 text-blue-400" />
+                  </div>
+                  <p className="text-gray-300 font-medium mb-2">Privacy Assistant Ready</p>
+                  <p className="text-gray-500 text-sm">
+                    Ask me anything about this document's privacy practices or terms.
+                  </p>
+                </div>
+              )}
+              
+              {chatHistory.map((chat, i) => (
+                <div key={i} className="space-y-4">
+                  <div className="flex justify-end">
+                    <div className="bg-blue-600 text-white rounded-2xl rounded-tr-none px-4 py-2 max-w-[85%] text-sm shadow-md">
+                      {chat.q}
+                    </div>
+                  </div>
+                  <div className="flex justify-start">
+                    <div className="bg-gray-800 text-gray-200 rounded-2xl rounded-tl-none px-4 py-2 max-w-[85%] text-sm border border-gray-700 shadow-sm leading-relaxed">
+                      {chat.a}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-800 text-gray-400 rounded-2xl rounded-tl-none px-4 py-2 text-sm border border-gray-700 animate-pulse">
+                    AI is thinking...
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Chat Input */}
+            <div className="p-4 border-t border-gray-800 bg-gray-900/80 backdrop-blur-sm">
+              <div className="flex items-end space-x-2">
+                <textarea
+                  placeholder="Ask a question..."
+                  value={chatQuestion}
+                  onChange={(e) => setChatQuestion(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendChat();
+                    }
+                  }}
+                  className="flex-1 bg-gray-800 border border-gray-700 text-white rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[56px] max-h-32 text-sm leading-relaxed"
+                  rows={1}
+                />
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  onClick={handleSendChat}
+                  disabled={!chatQuestion.trim() || isTyping}
+                  className="shrink-0 mb-1 h-10 w-10 rounded-xl"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-2 text-center uppercase tracking-tighter">
+                Assistant is using AI analysis context
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Backdrop */}
+        {isChatOpen && (
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[2147483646] transition-opacity" 
+            onClick={() => setIsChatOpen(false)}
+          />
+        )}
       </Layout>
     </ProtectedRoute>
   )

@@ -171,6 +171,36 @@ class GroqService:
             print(f"Error comparing documents: {e}")
             raise
 
+    async def chat_with_document(self, text: str, question: str, doc_type: str) -> str:
+        """Perform RAG-based QA on a specific document"""
+        # Limit context to avoid token limits (approx 25k tokens for context)
+        context_text = text[:100000] 
+        
+        prompt = f"""You are a helpful legal and privacy expert. Answer the following question based ONLY on the provided {doc_type} text. 
+If the answer is not contained within the text, say "I cannot find the answer to that in this document."
+
+DOCUMENT TEXT:
+---
+{context_text}
+---
+
+USER QUESTION: {question}"""
+
+        try:
+            chat_completion = self.client.chat.completions.create(
+                model=self.MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a specialized legal assistant. Provide clear, concise, and accurate answers based on document context."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1, # Low temperature for factual accuracy
+                max_tokens=1000
+            )
+            return chat_completion.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Groq Chat Error: {e}")
+            raise
+
     def _create_analysis_prompt(self, text: str, url: str, doc_type: str) -> str:
         """Create analysis prompt for Groq"""
         # Limit text to 50K chars

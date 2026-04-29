@@ -140,3 +140,12 @@ class DocumentVersionResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class ChatRequest(BaseModel):
+    """Request for chatting with a document"""
+    question: str
+
+class ChatResponse(BaseModel):
+    """Response from AI chat"""
+    answer: str
+    document_id: UUID

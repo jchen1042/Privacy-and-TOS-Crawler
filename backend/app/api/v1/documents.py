@@ -11,9 +11,10 @@ from app.models.global_document import GlobalDocument
 from app.models.global_analysis_result import GlobalAnalysisResult
 from app.models.user_favorite import UserFavorite
 from app.models.crawl_session import CrawlSession
-from app.schemas.analysis import AnalysisResponse, DocumentAnalysisResponse, SessionAnalysisResponse, DocumentVersionResponse
+from app.schemas.analysis import AnalysisResponse, DocumentAnalysisResponse, SessionAnalysisResponse, DocumentVersionResponse, ChatRequest, ChatResponse
 from app.schemas.favorite import FavoriteDocumentResponse, FavoritesListResponse
 from app.database.base import get_db
+from app.services.groq_service import GroqService
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 
@@ -185,6 +186,35 @@ async def get_document_versions(
     ).order_by(DocumentVersion.created_at.desc()).all()
     
     return versions
+
+@router.post("/{document_id}/chat", response_model=ChatResponse)
+async def chat_with_document(
+    document_id: UUID,
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Ask a question about a specific document using RAG"""
+    document = db.query(Document).options(
+        joinedload(Document.global_document)
+    ).filter(
+        Document.id == document_id,
+        Document.user_id == current_user.id
+    ).first()
+
+    if not document or not document.global_document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    groq_service = GroqService()
+    try:
+        answer = await groq_service.chat_with_document(
+            text=document.global_document.raw_text,
+            question=request.question,
+            doc_type=document.document_type
+        )
+        return ChatResponse(answer=answer, document_id=document_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/{document_id}/favorite")
 async def add_to_favorites(
