@@ -80,7 +80,7 @@ const DocumentHistory: React.FC = () => {
             <h3 className="text-xl font-bold text-white mb-2">History Unavailable</h3>
             <p className="text-gray-400 mb-6 max-w-md mx-auto">{error}</p>
             <Button onClick={() => router.push('/crawler')} variant="outline">
-              Return to Analyzer
+              Back
             </Button>
           </CardContent>
         </Card>
@@ -92,11 +92,11 @@ const DocumentHistory: React.FC = () => {
           {/* Header */}
           <div className="mb-8">
             <button 
-              onClick={() => router.push('/crawler')}
+              onClick={() => router.back()}
               className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors mb-6 font-medium"
             >
               <ArrowLeft size={18} />
-              <span>Back to Analyzer</span>
+              <span>Back</span>
             </button>
 
             <div className="flex items-center gap-3 mb-4">
