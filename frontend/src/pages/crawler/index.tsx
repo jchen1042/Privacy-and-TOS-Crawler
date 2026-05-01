@@ -338,7 +338,8 @@ const CrawlerPage: React.FC = () => {
                                       summary_sentence: analysis.summary_one_sentence || '',
                                       word_frequency: analysis.word_frequency || {},
                                       measurements: analysis.measurements || {},
-                                      created_at: analysis.created_at || new Date().toISOString()
+                                      created_at: analysis.created_at || new Date().toISOString(),
+                                      nutrition_label: analysis.nutrition_label || {}
                                     }
                                     const docForPDF = {
                                       id: document.document_id || '',
@@ -388,7 +389,7 @@ const CrawlerPage: React.FC = () => {
           <div className="flex flex-col h-full">
             <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-gray-800/50 rounded-tl-3xl">
               <div className="flex items-center space-x-2">
-                <MessageSquare className="h-5 w-5 text-blue-400" />
+                <Sparkles className="h-5 w-5 text-blue-400" />
                 <h3 className="font-bold text-white truncate max-w-[200px]">
                   Chat: {activeChatDoc?.title || 'Document'}
                 </h3>

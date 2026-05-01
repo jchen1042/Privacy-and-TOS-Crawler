@@ -1,9 +1,33 @@
+export interface NutritionLabelData {
+  opt_out_available?: string;
+  data_sharing?: string;
+  data_retention?: string;
+  can_user_request_deletion?: string;
+  third_party_sharing?: string;
+  data_broker_sharing?: string;
+  cross_device_tracking?: string;
+  collection_purpose?: string;
+  microphone_access?: string;
+  camera_access?: string;
+  local_storage_access?: string;
+  user_contacts_access?: string;
+  location_access?: string;
+  biometric_data_access?: string;
+  health_data_access?: string;
+  data_transmission_frequency?: string;
+  account_deletion_allowed?: string;
+  internet_required?: string;
+  includes_reccurring_charges?: string;
+  [key: string]: string | undefined;
+}
+
 export interface AnalysisResult {
   document_id: string
   summary_100: string
   summary_sentence: string
   word_frequency: Record<string, number>
   measurements: TextMiningMeasurements
+  nutrition_label?: NutritionLabelData
   created_at: string
 }
 

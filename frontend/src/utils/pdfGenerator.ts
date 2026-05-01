@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { AnalysisResult, Document } from '@/types'
+import { AnalysisResult, Document, NutritionLabelData } from '@/types'
 
 interface PDFData {
   analysis: AnalysisResult
@@ -8,11 +8,66 @@ interface PDFData {
   sessionUrl?: string
 }
 
+// Mapping for Nutrition Label keys to human-readable text
+const nutritionLabelMap: { [key: string]: string } = {
+  opt_out_available: "Opt-out Available",
+  data_sharing: "General Sharing",
+  data_retention: "Retention Period",
+  can_user_request_deletion: "Request Deletion",
+  third_party_sharing: "Third-party Sharing",
+  data_broker_sharing: "Data Brokers",
+  cross_device_tracking: "Cross-device Tracking",
+  collection_purpose: "Collection Purpose",
+  microphone_access: "Microphone Access",
+  camera_access: "Camera Access",
+  local_storage_access: "Local Storage",
+  user_contacts_access: "Contacts Access",
+  location_access: "Location Access",
+  biometric_data_access: "Biometric Access",
+  health_data_access: "Health Data Access",
+  data_transmission_frequency: "Transmission",
+  account_deletion_allowed: "Account Deletion",
+  internet_required: "Internet Required",
+  includes_reccurring_charges: "Recurring Charges"
+};
+
+// Define categories and their items for the Nutrition Label
+const nutritionLabelCategories: { [category: string]: (keyof NutritionLabelData)[] } = {
+  "Data Access & Tracking": [
+    "camera_access",
+    "microphone_access",
+    "location_access",
+    "biometric_data_access",
+    "health_data_access",
+    "user_contacts_access",
+    "local_storage_access",
+    "cross_device_tracking",
+    "data_transmission_frequency",
+  ],
+  "Data Sharing": [
+    "data_sharing",
+    "third_party_sharing",
+    "data_broker_sharing",
+  ],
+  "User Control": [
+    "opt_out_available",
+    "can_user_request_deletion",
+    "account_deletion_allowed",
+  ],
+  "Service Requirements": [
+    "internet_required",
+    "includes_reccurring_charges",
+  ],
+  "Policy Insights": [
+    "data_retention",
+    "collection_purpose",
+  ],
+};
+
 export const generatePDFReport = (data: PDFData): void => {
   const { analysis, document, sessionUrl } = data
   const doc = new jsPDF()
   
-  // Colors (using tuple types for TypeScript compatibility)
   const primaryColor: [number, number, number] = [41, 128, 185] // Blue
   const successColor: [number, number, number] = [46, 204, 113] // Green
   const warningColor: [number, number, number] = [241, 196, 15] // Yellow
@@ -236,6 +291,117 @@ export const generatePDFReport = (data: PDFData): void => {
     yPosition += 15
   }
   
+  // Digital Nutrition Label
+  if (analysis.nutrition_label && Object.keys(analysis.nutrition_label).length > 0) {
+    // Move DNL to its own dedicated page
+    doc.addPage();
+    yPosition = 20;
+
+    const labelWidth = 120; 
+    const labelX = (210 - labelWidth) / 2; 
+    const labelY = yPosition;
+    let currentLabelY = labelY;
+
+    // Header
+    doc.setFontSize(20); 
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.setFont("helvetica", "bold");
+    doc.text("Digital Nutrition Facts", labelX + 2, currentLabelY + 10); // Aligned to left
+    currentLabelY += 16 
+
+    // Thick line below header
+    doc.setLineWidth(1.25);
+    doc.line(labelX, currentLabelY, labelX + labelWidth, currentLabelY); // Full width line
+    currentLabelY += 8; 
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    
+    // Iterate through categories
+    for (const categoryName of Object.keys(nutritionLabelCategories)) {
+      const categoryItems = nutritionLabelCategories[categoryName];
+      let hasItemsInCategory = false;
+
+      for (const key of categoryItems) {
+        const value = analysis.nutrition_label[key];
+        if (value !== undefined && value !== null && value !== "") {
+          hasItemsInCategory = true;
+          break;
+        }
+      }
+
+      if (hasItemsInCategory) {
+        if (currentLabelY + 15 > doc.internal.pageSize.height - 20) {
+          doc.addPage();
+          currentLabelY = 20;
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.5);
+          doc.setFontSize(18); 
+          doc.setFont("helvetica", "bold");
+          doc.text("Digital Nutrition Facts (cont.)", labelX + 2, currentLabelY + 10); // Aligned to left
+          currentLabelY += 12;
+          doc.setLineWidth(1.5);
+          doc.line(labelX, currentLabelY, labelX + labelWidth, currentLabelY); // Full width line
+          currentLabelY += 8;
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "normal");
+        }
+
+        doc.setFontSize(10); // Category title font size
+        doc.setFont("helvetica", "bold");
+        doc.text(categoryName, labelX + 2, currentLabelY); // Category title left-aligned
+        currentLabelY += 4; // Space after category title
+        doc.setLineWidth(0.75);
+        doc.line(labelX + 1, currentLabelY, labelX + labelWidth - 1, currentLabelY); // Category separator line
+        currentLabelY += 6; // Space after category separator
+
+        for (const key of categoryItems) {
+          const value = analysis.nutrition_label[key];
+          if (value !== undefined && value !== null && value !== "") {
+            const displayLabel = nutritionLabelMap[key as string] || (key as string);
+            const displayValue = String(value);
+
+            if (currentLabelY + 8 > doc.internal.pageSize.height - 20) { 
+              doc.addPage();
+              currentLabelY = 20;
+              doc.setDrawColor(0, 0, 0);
+              doc.setLineWidth(0.5);
+              doc.setFontSize(18); // Adjust for continuation page
+              doc.setFont("helvetica", "bold");
+              doc.text("Digital Nutrition Facts (cont.)", labelX + 2, currentLabelY + 10); 
+              currentLabelY += 12;
+              doc.setLineWidth(1.5);
+              doc.line(labelX, currentLabelY, labelX + labelWidth, currentLabelY); // Full width line
+              currentLabelY += 8;
+              doc.setFontSize(10); // Category title font size
+              doc.setFont("helvetica", "bold");
+              doc.text(categoryName + " (cont.)", labelX + 2, currentLabelY); // Category title left-aligned
+              currentLabelY += 4;
+              doc.setLineWidth(0.75);
+              doc.line(labelX + 1, currentLabelY, labelX + labelWidth - 1, currentLabelY); // Category separator line
+              currentLabelY += 6;
+              doc.setFontSize(9);
+              doc.setFont("helvetica", "normal");
+            }
+
+            doc.setFont("helvetica", "normal"); 
+            doc.text(displayLabel, labelX + 3, currentLabelY); // Metric label left-aligned
+            doc.setFont("helvetica", "normal");
+            doc.text(displayValue, labelX + labelWidth - 3, currentLabelY, { align: "right" }); // Metric value right-aligned
+            
+            doc.setLineWidth(0.2);
+            doc.line(labelX + 2, currentLabelY + 2, labelX + labelWidth - 2, currentLabelY + 2); // Metric separator line
+            currentLabelY += 7; // More space after each metric
+          }
+        }
+        currentLabelY += 4; 
+      }
+    }
+    doc.rect(labelX, labelY, labelWidth, currentLabelY - labelY);
+    yPosition = currentLabelY + 10; // Update yPosition for next section
+  }
+
   // Footer
   const pageCount = doc.getNumberOfPages()
   for (let i = 1; i <= pageCount; i++) {
@@ -257,4 +423,3 @@ export const generatePDFReport = (data: PDFData): void => {
   // Save PDF
   doc.save(filename)
 }
-
