@@ -7,7 +7,7 @@ import SimpleAnalysisDisplay from '@/components/analysis/SimpleAnalysisDisplay'
 import { Card, CardContent, CardHeader, CardTitle, Spinner, Button, Input } from '@/components/ui'
 import { useCrawler } from '@/store/crawlerStore'
 import { CrawlSession, AnalysisResult, Document, TextMiningMeasurements } from '@/types'
-import { ArrowLeft, RefreshCw, FileText, Download, History, MessageSquare, Send, X, Sparkles, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, RefreshCw, FileText, Download, History, MessageSquare, Send, X, Sparkles, Filter } from 'lucide-react'
 import { apiService } from '@/services'
 import { generatePDFReport } from '@/utils/pdfGenerator'
 import { FavoriteButton } from '@/components/ui/FavoriteButton'
@@ -24,6 +24,9 @@ const CrawlResultsPage: React.FC = () => {
   const [analyses, setAnalyses] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Document Filtering State
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string>('all')
 
   // Chat State
   const [isChatOpen, setIsChatOpen] = useState(false)
@@ -50,6 +53,7 @@ const CrawlResultsPage: React.FC = () => {
     try {
       setIsLoading(true)
       setError(null)
+      setSelectedDocumentId('all') // Reset filter on new load
       
       console.log('Loading session data for ID:', id) // Debug log
 
@@ -106,10 +110,6 @@ const CrawlResultsPage: React.FC = () => {
     }
   }
 
-  const handleViewDocument = (documentId: string) => {
-    router.push(`/documents/${documentId}`)
-  }
-
   const handleSendChat = async () => {
     if (!chatQuestion.trim() || !activeChatDoc) return;
     
@@ -131,6 +131,11 @@ const CrawlResultsPage: React.FC = () => {
       setIsTyping(false);
     }
   }
+
+  // Filter documents based on dropdown selection
+  const filteredDocuments = selectedDocumentId === 'all' 
+    ? documents 
+    : documents.filter(doc => doc.document_id === selectedDocumentId);
 
   if (isLoading) {
     return (
@@ -209,82 +214,173 @@ const CrawlResultsPage: React.FC = () => {
             <CrawlStatusCard session={session} />
           </div>
 
-          {session.status === 'completed' && documents?.length > 0 ? (
-            <div className="space-y-24">
-              {documents.map((document, index) => {
-                const analysis = document.analysis
-                const isSelectedForChat = activeChatDoc?.document_id === document.document_id;
-                console.log("Full Analysis Object:", analysis);
-                console.log("Nutrition Label specifically:", analysis?.nutrition_label);
-                return (
-                  <div 
-                    key={document.document_id || index}
-                    className="p-8 md:p-12 rounded-[3rem] border border-gray-800 bg-gray-900/30 shadow-2xl relative overflow-hidden"
-                  >
-                    <div className="absolute -top-6 -right-6 opacity-[0.03] pointer-events-none text-white">
-                      <FileText size={240} />
-                    </div>
-                    
-                    <div className="text-[10px] font-black text-blue-500/50 uppercase tracking-[0.4em] mb-10 flex items-center gap-6">
-                      <span className="flex-shrink-0">Document Entry {index + 1}</span>
-                      <div className="flex-1 h-[1px] bg-gray-800" />
-                    </div>
+          {/* Dynamic Document Filter Navigation */}
+          {session.status === 'completed' && documents?.length > 1 && (
+            <div className="flex items-center space-x-2 mb-8 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700/50 w-fit overflow-x-auto">
+              <div className="pl-2 pr-1 text-gray-500 hidden sm:block">
+                <Filter className="h-4 w-4" />
+              </div>
+              <Button
+                variant={selectedDocumentId === 'all' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setSelectedDocumentId('all')}
+                className={`whitespace-nowrap ${selectedDocumentId === 'all' ? '' : 'text-gray-400 hover:text-white'}`}
+              >
+                All Documents ({documents.length})
+              </Button>
+              
+              {documents.map((doc, index) => (
+                <Button
+                  key={doc.document_id || index}
+                  variant={selectedDocumentId === doc.document_id ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setSelectedDocumentId(doc.document_id)}
+                  className={`whitespace-nowrap ${selectedDocumentId === doc.document_id ? '' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {doc.title || `Document ${index + 1}`}
+                </Button>
+              ))}
+            </div>
+          )}
 
-                    <Card className="bg-gray-800/60 backdrop-blur-sm border-gray-700/50 shadow-xl mb-8">
-                      <CardContent className="p-6">
-                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
-                          <div>
-                            <h2 className="text-2xl font-bold text-white mb-2">
-                              {document.title || 'Document ' + (index + 1)}
-                            </h2>
-                            <p className="text-gray-300">
-                              <span className="inline-flex items-center space-x-2">
-                                <FileText className="h-4 w-4" />
-                                <span className="capitalize">{document.document_type}</span>
-                              </span>
-                              {' • '}
-                              <a href={document.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline">
-                                {document.url}
-                              </a>
-                            </p>
-                            {document.word_count && (
-                              <p className="text-sm text-gray-400 mt-1">
-                                Word count: {document.word_count.toLocaleString()}
+          {session.status === 'completed' && documents?.length > 0 ? (
+            filteredDocuments.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 bg-gray-900/40 rounded-[2.5rem] border border-gray-700/50">
+                <p>No documents found matching this filter.</p>
+                <Button 
+                  variant="ghost" 
+                  className="mt-4 text-blue-400 hover:text-blue-300"
+                  onClick={() => setSelectedDocumentId('all')}
+                >
+                  Clear Filter
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-24">
+                {filteredDocuments.map((document, index) => {
+                  const analysis = document.analysis
+                  const isSelectedForChat = activeChatDoc?.document_id === document.document_id;
+                  
+                  // Keep the original index label based on the full documents array
+                  const originalIndex = documents.findIndex(d => d.document_id === document.document_id);
+                  const displayIndex = originalIndex !== -1 ? originalIndex + 1 : index + 1;
+
+                  return (
+                    <div 
+                      key={document.document_id || index}
+                      className="p-8 md:p-12 rounded-[3rem] border border-gray-800 bg-gray-900/30 shadow-2xl relative overflow-hidden"
+                    >
+                      <div className="absolute -top-6 -right-6 opacity-[0.03] pointer-events-none text-white">
+                        <FileText size={240} />
+                      </div>
+                      
+                      <div className="text-[10px] font-black text-blue-500/50 uppercase tracking-[0.4em] mb-10 flex items-center gap-6">
+                        <span className="flex-shrink-0">Document Entry {displayIndex}</span>
+                        <div className="flex-1 h-[1px] bg-gray-800" />
+                      </div>
+
+                      <Card className="bg-gray-800/60 backdrop-blur-sm border-gray-700/50 shadow-xl mb-8">
+                        <CardContent className="p-6">
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+                            <div>
+                              <h2 className="text-2xl font-bold text-white mb-2">
+                                {document.title || 'Document ' + displayIndex}
+                              </h2>
+                              <p className="text-gray-300">
+                                <span className="inline-flex items-center space-x-2">
+                                  <FileText className="h-4 w-4" />
+                                  <span className="capitalize">{document.document_type}</span>
+                                </span>
+                                {' • '}
+                                <a href={document.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline">
+                                  {document.url}
+                                </a>
                               </p>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <FavoriteButton
-                              documentId={document.document_id}
-                              initialIsFavorite={document.is_favorite || false}
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => router.push(`/documentHistory?documentId=${document.document_id}`)}
-                              leftIcon={<History className="h-4 w-4" />}
-                            >
-                              View History
-                            </Button>
+                              {document.word_count && (
+                                <p className="text-sm text-gray-400 mt-1">
+                                  Word count: {document.word_count.toLocaleString()}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
+                              <FavoriteButton
+                                documentId={document.document_id}
+                                initialIsFavorite={document.is_favorite || false}
+                              />
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
-                                  setActiveChatDoc(document);
-                                  setIsChatOpen(true);
-                                  setChatHistory([]);
-                                }}
-                                className={isSelectedForChat ? 'border-blue-500 bg-blue-500/10' : ''}
-                                leftIcon={<Sparkles className="h-4 w-4" />}
+                                onClick={() => router.push(`/documentHistory?documentId=${document.document_id}`)}
+                                leftIcon={<History className="h-4 w-4" />}
                               >
-                                Privacy Assistant
+                                View History
                               </Button>
-                            {analysis && (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => {
-                                  const analysisResult = {
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setActiveChatDoc(document);
+                                    setIsChatOpen(true);
+                                    setChatHistory([]);
+                                  }}
+                                  className={isSelectedForChat ? 'border-blue-500 bg-blue-500/10' : ''}
+                                  leftIcon={<Sparkles className="h-4 w-4" />}
+                                >
+                                  Privacy Assistant
+                                </Button>
+                              {analysis && (
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => {
+                                    const analysisResult = {
+                                      document_id: document.document_id || '',
+                                      summary_100: analysis.summary_100_words || '',
+                                      summary_sentence: analysis.summary_one_sentence || '',
+                                      word_frequency: analysis.word_frequency || {},
+                                      measurements: analysis.measurements || {},
+                                      created_at: analysis.created_at || new Date().toISOString(),
+                                      nutrition_label: analysis.nutrition_label || {}
+                                    }
+                                    const docForPDF = {
+                                      id: document.document_id || '',
+                                      url: document.url || '',
+                                      domain: document.url ? new URL(document.url).hostname : '',
+                                      document_type: (document.document_type === 'terms_of_service' ? 'tos' : 'privacy') as 'tos' | 'privacy',
+                                      title: document.title || '',
+                                      content: '',
+                                      word_count: document.word_count || 0,
+                                      sentence_count: analysis.measurements?.sentence_count || 0,
+                                      created_at: document.created_at || new Date().toISOString(),
+                                      updated_at: document.updated_at || new Date().toISOString()
+                                    }
+                                    generatePDFReport({
+                                      analysis: analysisResult,
+                                      document: docForPDF,
+                                      sessionUrl: document.url
+                                    })
+                                  }}
+                                  leftIcon={<Download className="h-4 w-4" />}
+                                >
+                                  Download PDF
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      {analysis ? (
+                        <div className="mt-8">
+                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                            <div className="lg:col-span-2 w-full">
+                              <SimpleAnalysisDisplay analysis={analysis} />
+                            </div>
+                            <div className="lg:col-span-1 w-full">
+                              <NutritionLabel 
+                                data={analysis.nutrition_label || {}} 
+                                onDownload={analysis.nutrition_label ? () => {
+                                  const analysisResult: AnalysisResult = {
                                     document_id: document.document_id || '',
                                     summary_100: analysis.summary_100_words || '',
                                     summary_sentence: analysis.summary_one_sentence || '',
@@ -292,8 +388,8 @@ const CrawlResultsPage: React.FC = () => {
                                     measurements: analysis.measurements || {},
                                     created_at: analysis.created_at || new Date().toISOString(),
                                     nutrition_label: analysis.nutrition_label || {}
-                                  }
-                                  const docForPDF = {
+                                  };
+                                  const docForPDF: Document = {
                                     id: document.document_id || '',
                                     url: document.url || '',
                                     domain: document.url ? new URL(document.url).hostname : '',
@@ -304,71 +400,25 @@ const CrawlResultsPage: React.FC = () => {
                                     sentence_count: analysis.measurements?.sentence_count || 0,
                                     created_at: document.created_at || new Date().toISOString(),
                                     updated_at: document.updated_at || new Date().toISOString()
-                                  }
-                                  generatePDFReport({
-                                    analysis: analysisResult,
-                                    document: docForPDF,
-                                    sessionUrl: document.url
-                                  })
-                                }}
-                                leftIcon={<Download className="h-4 w-4" />}
-                              >
-                                Download PDF
-                              </Button>
-                            )}
+                                  };
+                                  generateDNLOnlyPDF({ analysis: analysisResult, document: docForPDF });
+                                } : undefined}
+                              />
+                            </div>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                    
-                    {analysis ? (
-                      <div className="mt-8">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                          <div className="lg:col-span-2">
-                            <SimpleAnalysisDisplay analysis={analysis} />
-                          </div>
-                          <div className="lg:col-span-1 sticky top-8">
-                            <NutritionLabel 
-                              data={analysis.nutrition_label || {}} 
-                              onDownload={analysis.nutrition_label ? () => {
-                                const analysisResult: AnalysisResult = {
-                                  document_id: document.document_id || '',
-                                  summary_100: analysis.summary_100_words || '',
-                                  summary_sentence: analysis.summary_one_sentence || '',
-                                  word_frequency: analysis.word_frequency || {},
-                                  measurements: analysis.measurements || {},
-                                  created_at: analysis.created_at || new Date().toISOString(),
-                                  nutrition_label: analysis.nutrition_label || {}
-                                };
-                                const docForPDF: Document = {
-                                  id: document.document_id || '',
-                                  url: document.url || '',
-                                  domain: document.url ? new URL(document.url).hostname : '',
-                                  document_type: (document.document_type === 'terms_of_service' ? 'tos' : 'privacy') as 'tos' | 'privacy',
-                                  title: document.title || '',
-                                  content: '',
-                                  word_count: document.word_count || 0,
-                                  sentence_count: analysis.measurements?.sentence_count || 0,
-                                  created_at: document.created_at || new Date().toISOString(),
-                                  updated_at: document.updated_at || new Date().toISOString()
-                                };
-                                generateDNLOnlyPDF({ analysis: analysisResult, document: docForPDF });
-                              } : undefined}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700">
-                        <CardContent className="p-8 text-center">
-                          <p className="text-gray-300">No analysis available for this document.</p>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+                      ) : (
+                        <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700">
+                          <CardContent className="p-8 text-center">
+                            <p className="text-gray-300">No analysis available for this document.</p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
           ) : session.status === 'processing' ? (
             <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700">
               <CardContent className="p-8 text-center">
@@ -392,6 +442,7 @@ const CrawlResultsPage: React.FC = () => {
                   className="text-blue-400 hover:text-blue-300 font-medium"
                 >
                   Try Again
+                 Back to Analyzer
                 </button>
               </CardContent>
             </Card>
@@ -403,7 +454,7 @@ const CrawlResultsPage: React.FC = () => {
                   Initializing document analysis...
                 </p>
               </CardContent>
-            </Card>
+              </Card>
           )}
         </div>
 
@@ -461,7 +512,6 @@ const CrawlResultsPage: React.FC = () => {
               )}
             </div>
 
-            {/* Chat Input */}
             <div className="p-4 border-t border-gray-800 bg-gray-900/80 backdrop-blur-sm">
               <div className="flex items-end space-x-2">
                 <textarea

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, Spinner, Button, Input } from
 import { useCrawler, useCrawlerActions } from '@/store/crawlerStore'
 import { useRouter } from 'next/router'
 import SimpleAnalysisDisplay from '@/components/analysis/SimpleAnalysisDisplay'
-import { History, ArrowRight, CheckCircle, FileText, RefreshCw, Sparkles, Download, MessageSquare, X, Send, Image as ImageIcon } from 'lucide-react'
+import { History, ArrowRight, CheckCircle, FileText, RefreshCw, Sparkles, Download, MessageSquare, X, Send, Filter } from 'lucide-react'
 import { AnalysisResult, Document, TextMiningMeasurements } from '@/types'
 import { auth } from '@/lib/firebase'
 import { getIdToken } from 'firebase/auth'
@@ -24,6 +24,9 @@ const CrawlerPage: React.FC = () => {
   const [latestResults, setLatestResults] = useState<any>(null)
   const [loadingResults, setLoadingResults] = useState(false)
 
+  // Document Filter State 
+  const [documentFilter, setDocumentFilter] = useState<string>('all')
+
   // Chat State
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [activeChatDoc, setActiveChatDoc] = useState<any>(null)
@@ -32,34 +35,25 @@ const CrawlerPage: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false)
 
   useEffect(() => {
-    // Get Firebase ID token and store in localStorage for API authentication
-    // THEN fetch crawl history after token is set
     const setupTokenAndFetchHistory = async () => {
       if (auth.currentUser) {
         try {
-          // First, get and set the token
           const token = await getIdToken(auth.currentUser)
           if (typeof window !== 'undefined') {
             localStorage.setItem('auth_token', token)
           }
-          
-          // Only fetch history AFTER token is set
-          // This prevents 401 errors from redirecting to login
           await getCrawlHistory()
         } catch (err) {
           console.error('Error getting token:', err)
-          // Don't fetch history if token retrieval fails
         }
       }
     }
     
     setupTokenAndFetchHistory()
     
-    // Also refresh token periodically (every 50 minutes)
-    // And before it expires (tokens expire after 1 hour)
     const tokenRefreshInterval = setInterval(() => {
       if (auth.currentUser) {
-        getIdToken(auth.currentUser, true) // Force refresh
+        getIdToken(auth.currentUser, true) 
         .then((tkn) => {
           if (typeof window !== 'undefined') {
             localStorage.setItem('auth_token', tkn)
@@ -67,7 +61,6 @@ const CrawlerPage: React.FC = () => {
         })
         .catch((err) => {
           console.error('Error refreshing token:', err)
-          // If token refresh fails, try to get a new one
           if (auth.currentUser) {
             getIdToken(auth.currentUser)
               .then((tkn) => {
@@ -79,14 +72,13 @@ const CrawlerPage: React.FC = () => {
           }
         })
       }
-    }, 50 * 60 * 1000) // 50 minutes
+    }, 50 * 60 * 1000) 
     
     return () => clearInterval(tokenRefreshInterval)
   }, [getCrawlHistory])
 
   const latestSession = sessions[0]
 
-  // Poll for updates if the latest session is still in progress
   useEffect(() => {
     const isActive = latestSession && (latestSession.status === 'processing' || latestSession.status === 'pending')
     
@@ -102,7 +94,6 @@ const CrawlerPage: React.FC = () => {
     }
   }, [latestSession?.status, getCrawlHistory])
 
-  // Clear results if a new crawl starts to show the progress card instead
   useEffect(() => {
     if (latestSession && (latestSession.status === 'processing' || latestSession.status === 'pending')) {
       setLatestResults(null)
@@ -115,6 +106,8 @@ const CrawlerPage: React.FC = () => {
       const response = await apiService.getCrawlResults(sessionId)
       if (response.success && response.data) {
         setLatestResults(response.data)
+        // Reset filter when loading new results
+        setDocumentFilter('all')
       }
     } catch (error) {
       console.error('Error loading results:', error)
@@ -125,10 +118,6 @@ const CrawlerPage: React.FC = () => {
 
   const handleViewSession = (sessionId: string) => {
     router.push(`/crawler/results/${sessionId}`)
-  }
-
-  const handleRefresh = () => {
-    // Refresh logic will be handled by the component
   }
 
   const handleSendChat = async () => {
@@ -152,6 +141,12 @@ const CrawlerPage: React.FC = () => {
       setIsTyping(false);
     }
   }
+
+  // Dynamically filter by matching the selected document_id
+  const filteredDocuments = latestResults?.documents?.filter((doc: any) => {
+    if (documentFilter === 'all') return true;
+    return doc.document_id === documentFilter;
+  }) || [];
 
   return (
     <ProtectedRoute>
@@ -187,7 +182,7 @@ const CrawlerPage: React.FC = () => {
                   {sessions.length > 0 ? (
                     <div className="space-y-3">
                       {sessions
-                        .filter(session => session && session.id && session.url) // Filter out invalid sessions
+                        .filter(session => session && session.id && session.url)
                         .slice(0, 3)
                         .map((session) => (
                         <div
@@ -261,154 +256,199 @@ const CrawlerPage: React.FC = () => {
             </div>
           ) : latestResults && latestResults.documents && latestResults.documents.length > 0 ? (
             <div className="mt-6">
-              <div className="flex items-center justify-between px-2 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 mb-6 gap-4">
                 <div className="flex items-center space-x-2 text-white">
                   <div className="p-2 bg-green-500/10 rounded-lg">
                     <CheckCircle className="h-6 w-6 text-green-500" />
                   </div>
                   <span className="text-2xl font-bold">Analysis Results</span>
                 </div>
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-gray-400 text-right">
                   {latestResults.url}
                 </div>
               </div>
 
-              <div className="space-y-8 pt-6 md:pt-10">
-                {latestResults.documents.map((document: any, index: number) => {
-                  const analysis = document.analysis;
-                  const isSelectedForChat = activeChatDoc?.document_id === document.document_id;
-                  return (
-                      <div 
-                        key={document.document_id || index}
-                        className="p-6 md:p-10 rounded-[2.5rem] border border-gray-700/50 bg-gray-900/40 shadow-xl relative overflow-hidden"
-                      >
-                        {/* Subtle watermark icon for depth */}
-                        <div className="absolute -top-4 -right-4 opacity-[0.02] pointer-events-none text-white">
-                          <FileText size={200} />
-                        </div>
+              {/* Dynamic Document Filter Navigation */}
+              {latestResults.documents.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2 mb-6 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700/50 w-full mx-2">
+                  <div className="pl-2 pr-1 text-gray-500 hidden sm:block">
+                    <Filter className="h-4 w-4" />
+                  </div>
+                  <Button
+                    variant={documentFilter === 'all' ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setDocumentFilter('all')}
+                    className={`whitespace-nowrap ${documentFilter === 'all' ? '' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    All Documents ({latestResults.documents.length})
+                  </Button>
+                  
+                  {/* Map through all available documents to create dynamic filter tabs */}
+                  {latestResults.documents.map((doc: any, index: number) => (
+                    <Button
+                      key={doc.document_id || index}
+                      variant={documentFilter === doc.document_id ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setDocumentFilter(doc.document_id)}
+                      className={`whitespace-nowrap ${documentFilter === doc.document_id ? '' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      {doc.title || `Document ${index + 1}`}
+                    </Button>
+                  ))}
+                </div>
+              )}
 
-                        <div className="text-[9px] font-black text-blue-500/40 uppercase tracking-[0.4em] mb-4 flex items-center gap-4">
-                          <span className="flex-shrink-0">Document Entry {index + 1}</span>
-                          <div className="flex-1 h-[1px] bg-gray-800" />
-                        </div>
+              {filteredDocuments.length === 0 ? (
+                <div className="text-center py-12 text-gray-400 bg-gray-900/40 rounded-[2.5rem] border border-gray-700/50">
+                  <p>No documents found matching this filter.</p>
+                  <Button 
+                    variant="ghost" 
+                    className="mt-4 text-blue-400 hover:text-blue-300"
+                    onClick={() => setDocumentFilter('all')}
+                  >
+                    Clear Filter
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-8 pt-2">
+                  {filteredDocuments.map((document: any, index: number) => {
+                    const analysis = document.analysis;
+                    const isSelectedForChat = activeChatDoc?.document_id === document.document_id;
+                    return (
+                        <div 
+                          key={document.document_id || index}
+                          className="p-6 md:p-10 rounded-[2.5rem] border border-gray-700/50 bg-gray-900/40 shadow-xl relative overflow-hidden"
+                        >
+                          {/* Subtle watermark icon for depth */}
+                          <div className="absolute -top-4 -right-4 opacity-[0.02] pointer-events-none text-white">
+                            <FileText size={200} />
+                          </div>
 
-                        <div className="mb-6 pb-6 border-b border-gray-800/50">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div>
-                              <h3 className="text-xl font-bold text-white mb-2">
-                                {document.title || `Document ${index + 1}`}
-                              </h3>
-                              <p className="text-sm text-gray-400">
-                                <span className="capitalize">{document.document_type}</span>
-                                {document.word_count && ` • ${document.word_count.toLocaleString()} words`}
-                              </p>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <FavoriteButton
-                                documentId={document.document_id}
-                                initialIsFavorite={document.is_favorite || false}
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => router.push(`/documentHistory?documentId=${document.document_id}`)}
-                                leftIcon={<History className="h-4 w-4" />}
-                              >
-                                View History
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setActiveChatDoc(document);
-                                  setIsChatOpen(true);
-                                  setChatHistory([]);
-                                }}
-                                className={isSelectedForChat ? 'border-blue-500 bg-blue-500/10' : ''}
-                                leftIcon={<Sparkles className="h-4 w-4" />}
-                              >
-                                Privacy Assistant
-                              </Button>
-                              {analysis && (
+                          <div className="text-[9px] font-black text-blue-500/40 uppercase tracking-[0.4em] mb-4 flex items-center gap-4">
+                            <span className="flex-shrink-0">Document Entry {index + 1}</span>
+                            <div className="flex-1 h-[1px] bg-gray-800" />
+                          </div>
+
+                          <div className="mb-6 pb-6 border-b border-gray-800/50">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              <div>
+                                <h3 className="text-xl font-bold text-white mb-2">
+                                  {document.title || `Document ${index + 1}`}
+                                </h3>
+                                <p className="text-sm text-gray-400">
+                                  <span className="capitalize">{(document.document_type || 'Unknown').replace('_', ' ')}</span>
+                                  {document.word_count && ` • ${document.word_count.toLocaleString()} words`}
+                                </p>
+                              </div>
+                              <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+                                <FavoriteButton
+                                  documentId={document.document_id}
+                                  initialIsFavorite={document.is_favorite || false}
+                                />
                                 <Button
-                                  variant="primary"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => router.push(`/documentHistory?documentId=${document.document_id}`)}
+                                  leftIcon={<History className="h-4 w-4" />}
+                                >
+                                  View History
+                                </Button>
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => {
-                                    const analysisResult = {
-                                      document_id: document.document_id || '',
-                                      summary_100: analysis.summary_100_words || '',
-                                      summary_sentence: analysis.summary_one_sentence || '',
-                                      word_frequency: analysis.word_frequency || {},
-                                      measurements: analysis.measurements || {},
-                                      created_at: analysis.created_at || new Date().toISOString(),
-                                      nutrition_label: analysis.nutrition_label || {}
-                                    }
-                                    const docForPDF = {
-                                      id: document.document_id || '',
-                                      url: document.url || '',
-                                      domain: document.url ? new URL(document.url).hostname : '',
-                                      document_type: (document.document_type === 'terms_of_service' ? 'tos' : 'privacy') as 'tos' | 'privacy',
-                                      title: document.title || '',
-                                      content: '',
-                                      word_count: document.word_count || 0,
-                                      sentence_count: analysis.measurements?.sentence_count || 0,
-                                      created_at: document.created_at || new Date().toISOString(),
-                                      updated_at: document.updated_at || new Date().toISOString()
-                                    }
-                                    generatePDFReport({
-                                      analysis: analysisResult,
-                                      document: docForPDF,
-                                      sessionUrl: document.url
-                                    })
+                                    setActiveChatDoc(document);
+                                    setIsChatOpen(true);
+                                    setChatHistory([]);
                                   }}
-                                  leftIcon={<Download className="h-4 w-4" />}
+                                  className={isSelectedForChat ? 'border-blue-500 bg-blue-500/10' : ''}
+                                  leftIcon={<Sparkles className="h-4 w-4" />}
                                 >
-                                  Download PDF
+                                  Privacy Assistant
                                 </Button>
-                              )}
+                                {analysis && (
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() => {
+                                      const analysisResult = {
+                                        document_id: document.document_id || '',
+                                        summary_100: analysis.summary_100_words || '',
+                                        summary_sentence: analysis.summary_one_sentence || '',
+                                        word_frequency: analysis.word_frequency || {},
+                                        measurements: analysis.measurements || {},
+                                        created_at: analysis.created_at || new Date().toISOString(),
+                                        nutrition_label: analysis.nutrition_label || {}
+                                      }
+                                      const docForPDF = {
+                                        id: document.document_id || '',
+                                        url: document.url || '',
+                                        domain: document.url ? new URL(document.url).hostname : '',
+                                        document_type: (document.document_type === 'terms_of_service' ? 'tos' : 'privacy') as 'tos' | 'privacy',
+                                        title: document.title || '',
+                                        content: '',
+                                        word_count: document.word_count || 0,
+                                        sentence_count: analysis.measurements?.sentence_count || 0,
+                                        created_at: document.created_at || new Date().toISOString(),
+                                        updated_at: document.updated_at || new Date().toISOString()
+                                      }
+                                      generatePDFReport({
+                                        analysis: analysisResult,
+                                        document: docForPDF,
+                                        sessionUrl: document.url
+                                      })
+                                    }}
+                                    leftIcon={<Download className="h-4 w-4" />}
+                                  >
+                                    Download PDF
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
+                          {analysis && (
+                            <div className="mt-8">
+                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                                <div className="lg:col-span-2 w-full">
+                                  <SimpleAnalysisDisplay analysis={analysis} />
+                                </div>
+                                <div className="lg:col-span-1 w-full">
+                                  <NutritionLabel 
+                                    data={analysis.nutrition_label || {}} 
+                                    onDownload={() => {
+                                      const analysisResult: AnalysisResult = {
+                                        document_id: document.document_id || '',
+                                        summary_100: analysis.summary_100_words || '',
+                                        summary_sentence: analysis.summary_one_sentence || '',
+                                        word_frequency: analysis.word_frequency || {},
+                                        measurements: analysis.measurements || {},
+                                        created_at: analysis.created_at || new Date().toISOString(),
+                                        nutrition_label: analysis.nutrition_label || {}
+                                      };
+                                      const docForPDF: Document = {
+                                        id: document.document_id || '',
+                                        url: document.url || '',
+                                        domain: document.url ? new URL(document.url).hostname : '',
+                                        document_type: (document.document_type === 'terms_of_service' ? 'tos' : 'privacy') as 'tos' | 'privacy',
+                                        title: document.title || '',
+                                        content: '',
+                                        word_count: document.word_count || 0,
+                                        sentence_count: analysis.measurements?.sentence_count || 0,
+                                        created_at: document.created_at || new Date().toISOString(),
+                                        updated_at: document.updated_at || new Date().toISOString()
+                                      };
+                                      generateDNLOnlyPDF({ analysis: analysisResult, document: docForPDF });
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        {analysis && (
-                          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
-                            <div className="xl:col-span-2">
-                              <SimpleAnalysisDisplay analysis={analysis} />
-                            </div>
-                            <div className="xl:col-span-1">
-                              <NutritionLabel 
-                                data={analysis.nutrition_label || {}} 
-                                onDownload={() => {
-                                  const analysisResult: AnalysisResult = {
-                                    document_id: document.document_id || '',
-                                    summary_100: analysis.summary_100_words || '',
-                                    summary_sentence: analysis.summary_one_sentence || '',
-                                    word_frequency: analysis.word_frequency || {},
-                                    measurements: analysis.measurements || {},
-                                    created_at: analysis.created_at || new Date().toISOString(),
-                                    nutrition_label: analysis.nutrition_label || {}
-                                  };
-                                  const docForPDF: Document = {
-                                    id: document.document_id || '',
-                                    url: document.url || '',
-                                    domain: document.url ? new URL(document.url).hostname : '',
-                                    document_type: (document.document_type === 'terms_of_service' ? 'tos' : 'privacy') as 'tos' | 'privacy',
-                                    title: document.title || '',
-                                    content: '',
-                                    word_count: document.word_count || 0,
-                                    sentence_count: analysis.measurements?.sentence_count || 0,
-                                    created_at: document.created_at || new Date().toISOString(),
-                                    updated_at: document.updated_at || new Date().toISOString()
-                                  };
-                                  generateDNLOnlyPDF({ analysis: analysisResult, document: docForPDF });
-                                }}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ) : null}
         </div>
