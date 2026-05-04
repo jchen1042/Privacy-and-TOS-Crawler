@@ -4,14 +4,15 @@ import Layout from '@/components/layout/Layout'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import CrawlStatusCard from '@/components/crawler/CrawlStatusCard'
 import SimpleAnalysisDisplay from '@/components/analysis/SimpleAnalysisDisplay'
-import { Card, CardContent, CardHeader, CardTitle, Spinner, Button, Input} from '@/components/ui'
+import { Card, CardContent, CardHeader, CardTitle, Spinner, Button, Input } from '@/components/ui'
 import { useCrawler } from '@/store/crawlerStore'
-import { CrawlSession } from '@/types'
-import { ArrowLeft, RefreshCw, FileText, Download, History, MessageSquare, Send, X, Sparkles } from 'lucide-react'
+import { CrawlSession, AnalysisResult, Document, TextMiningMeasurements } from '@/types'
+import { ArrowLeft, RefreshCw, FileText, Download, History, MessageSquare, Send, X, Sparkles, Image as ImageIcon } from 'lucide-react'
 import { apiService } from '@/services'
 import { generatePDFReport } from '@/utils/pdfGenerator'
 import { FavoriteButton } from '@/components/ui/FavoriteButton'
 import NutritionLabel from '@/components/analysis/NutritionLabel'
+import { generateDNLOnlyPDF } from '@/utils/generateDNLOnlyPDF'
 
 const CrawlResultsPage: React.FC = () => {
   const router = useRouter()
@@ -278,6 +279,39 @@ const CrawlResultsPage: React.FC = () => {
                               >
                                 Privacy Assistant
                               </Button>
+                              {analysis && analysis.nutrition_label && (
+                                                              <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                  const analysisResult: AnalysisResult = {
+                                                                    document_id: document.document_id || '',
+                                                                    summary_100: analysis.summary_100_words || '',
+                                                                    summary_sentence: analysis.summary_one_sentence || '',
+                                                                    word_frequency: analysis.word_frequency || {},
+                                                                    measurements: analysis.measurements || {},
+                                                                    created_at: analysis.created_at || new Date().toISOString(),
+                                                                    nutrition_label: analysis.nutrition_label || {}
+                                                                  };
+                                                                  const docForPDF: Document = {
+                                                                    id: document.document_id || '',
+                                                                    url: document.url || '',
+                                                                    domain: document.url ? new URL(document.url).hostname : '',
+                                                                    document_type: (document.document_type === 'terms_of_service' ? 'tos' : 'privacy') as 'tos' | 'privacy',
+                                                                    title: document.title || '',
+                                                                    content: '',
+                                                                    word_count: document.word_count || 0,
+                                                                    sentence_count: analysis.measurements?.sentence_count || 0,
+                                                                    created_at: document.created_at || new Date().toISOString(),
+                                                                    updated_at: document.updated_at || new Date().toISOString()
+                                                                  };
+                                                                  generateDNLOnlyPDF({ analysis: analysisResult, document: docForPDF });
+                                                                }}
+                                                                leftIcon={<Download className="h-4 w-4" />}
+                                                              >
+                                                                Download DNL (PDF)
+                                                              </Button>
+                                                            )}
                             {analysis && (
                               <Button
                                 variant="primary"

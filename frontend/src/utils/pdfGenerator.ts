@@ -290,7 +290,7 @@ export const generatePDFReport = (data: PDFData): void => {
     doc.rect(14, yPosition, 180, 8, 'S')
     yPosition += 15
   }
-  
+
   // Digital Nutrition Label
   if (analysis.nutrition_label && Object.keys(analysis.nutrition_label).length > 0) {
     // Move DNL to its own dedicated page
@@ -413,7 +413,7 @@ export const generatePDFReport = (data: PDFData): void => {
     doc.rect(labelX, labelY, labelWidth, currentLabelY - labelY);
     yPosition = currentLabelY + 10; // Update yPosition for next section
   }
-
+  
   // Footer
   const pageCount = doc.getNumberOfPages()
   for (let i = 1; i <= pageCount; i++) {
