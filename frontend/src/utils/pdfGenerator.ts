@@ -297,23 +297,33 @@ export const generatePDFReport = (data: PDFData): void => {
     doc.addPage();
     yPosition = 20;
 
-    const labelWidth = 120; 
-    const labelX = (210 - labelWidth) / 2; 
+    const labelWidth = 120; // Shrunk horizontally for a more compact vertical look
+    const labelX = (210 - labelWidth) / 2; // Center the label (A4 is 210mm wide)
     const labelY = yPosition;
     let currentLabelY = labelY;
 
     // Header
-    doc.setFontSize(20); 
+    doc.setFontSize(20); // Scaled down title
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
     doc.setFont("helvetica", "bold");
     doc.text("Digital Nutrition Facts", labelX + 2, currentLabelY + 10); // Aligned to left
-    currentLabelY += 16 
+    currentLabelY += 16; // More space after main title
+
+    // Add Document Title
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Document: ${document.title || 'N/A'}`, labelX + 2, currentLabelY);
+    currentLabelY += 6;
+
+    // Add Last Updated Date
+    doc.text(`Last Updated: ${new Date(document.updated_at || analysis.created_at).toLocaleDateString()}`, labelX + 2, currentLabelY);
+    currentLabelY += 8; // Space before the thick line
 
     // Thick line below header
-    doc.setLineWidth(1.25);
+    doc.setLineWidth(1.5);
     doc.line(labelX, currentLabelY, labelX + labelWidth, currentLabelY); // Full width line
-    currentLabelY += 8; 
+    currentLabelY += 10; // Space after thick line
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
@@ -337,9 +347,9 @@ export const generatePDFReport = (data: PDFData): void => {
           currentLabelY = 20;
           doc.setDrawColor(0, 0, 0);
           doc.setLineWidth(0.5);
-          doc.setFontSize(18); 
+          doc.setFontSize(18); // Adjust for continuation page
           doc.setFont("helvetica", "bold");
-          doc.text("Digital Nutrition Facts (cont.)", labelX + 2, currentLabelY + 10); // Aligned to left
+          doc.text("Digital Nutrition Facts (cont.)", labelX + 2, currentLabelY + 10);
           currentLabelY += 12;
           doc.setLineWidth(1.5);
           doc.line(labelX, currentLabelY, labelX + labelWidth, currentLabelY); // Full width line
@@ -362,14 +372,14 @@ export const generatePDFReport = (data: PDFData): void => {
             const displayLabel = nutritionLabelMap[key as string] || (key as string);
             const displayValue = String(value);
 
-            if (currentLabelY + 8 > doc.internal.pageSize.height - 20) { 
+            if (currentLabelY + 8 > doc.internal.pageSize.height - 20) { // Adjusted page break threshold
               doc.addPage();
               currentLabelY = 20;
               doc.setDrawColor(0, 0, 0);
               doc.setLineWidth(0.5);
               doc.setFontSize(18); // Adjust for continuation page
               doc.setFont("helvetica", "bold");
-              doc.text("Digital Nutrition Facts (cont.)", labelX + 2, currentLabelY + 10); 
+              doc.text("Digital Nutrition Facts (cont.)", labelX + 2, currentLabelY + 10);
               currentLabelY += 12;
               doc.setLineWidth(1.5);
               doc.line(labelX, currentLabelY, labelX + labelWidth, currentLabelY); // Full width line
@@ -385,7 +395,7 @@ export const generatePDFReport = (data: PDFData): void => {
               doc.setFont("helvetica", "normal");
             }
 
-            doc.setFont("helvetica", "normal"); 
+            doc.setFont("helvetica", "normal"); // Metric label is now normal weight
             doc.text(displayLabel, labelX + 3, currentLabelY); // Metric label left-aligned
             doc.setFont("helvetica", "normal");
             doc.text(displayValue, labelX + labelWidth - 3, currentLabelY, { align: "right" }); // Metric value right-aligned
@@ -395,9 +405,11 @@ export const generatePDFReport = (data: PDFData): void => {
             currentLabelY += 7; // More space after each metric
           }
         }
-        currentLabelY += 4; 
+        currentLabelY += 4; // More space after each category block
       }
     }
+
+    // Redraw the outer rectangle with the correct height
     doc.rect(labelX, labelY, labelWidth, currentLabelY - labelY);
     yPosition = currentLabelY + 10; // Update yPosition for next section
   }
