@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, Spinner, Button, Input } from
 import { useCrawler, useCrawlerActions } from '@/store/crawlerStore'
 import { useRouter } from 'next/router'
 import SimpleAnalysisDisplay from '@/components/analysis/SimpleAnalysisDisplay'
-import { History, ArrowRight, CheckCircle, FileText, RefreshCw, Sparkles, Download, MessageSquare, X, Send, Image as ImageIcon } from 'lucide-react' // ImageIcon is no longer used, but kept for now
+import { History, ArrowRight, CheckCircle, FileText, RefreshCw, Sparkles, Download, MessageSquare, X, Send, Image as ImageIcon } from 'lucide-react'
 import { AnalysisResult, Document, TextMiningMeasurements } from '@/types'
 import { auth } from '@/lib/firebase'
 import { getIdToken } from 'firebase/auth'
@@ -329,39 +329,6 @@ const CrawlerPage: React.FC = () => {
                               >
                                 Privacy Assistant
                               </Button>
-                              {analysis && analysis.nutrition_label && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    const analysisResult: AnalysisResult = {
-                                      document_id: document.document_id || '',
-                                      summary_100: analysis.summary_100_words || '',
-                                      summary_sentence: analysis.summary_one_sentence || '',
-                                      word_frequency: analysis.word_frequency || {},
-                                      measurements: analysis.measurements || {},
-                                      created_at: analysis.created_at || new Date().toISOString(),
-                                      nutrition_label: analysis.nutrition_label || {}
-                                    };
-                                    const docForPDF: Document = {
-                                      id: document.document_id || '',
-                                      url: document.url || '',
-                                      domain: document.url ? new URL(document.url).hostname : '',
-                                      document_type: (document.document_type === 'terms_of_service' ? 'tos' : 'privacy') as 'tos' | 'privacy',
-                                      title: document.title || '',
-                                      content: '',
-                                      word_count: document.word_count || 0,
-                                      sentence_count: analysis.measurements?.sentence_count || 0,
-                                      created_at: document.created_at || new Date().toISOString(),
-                                      updated_at: document.updated_at || new Date().toISOString()
-                                    };
-                                    generateDNLOnlyPDF({ analysis: analysisResult, document: docForPDF });
-                                  }}
-                                  leftIcon={<Download className="h-4 w-4" />}
-                                >
-                                  Download DNL (PDF)
-                                </Button>
-                              )}
                               {analysis && (
                                 <Button
                                   variant="primary"
@@ -408,7 +375,33 @@ const CrawlerPage: React.FC = () => {
                               <SimpleAnalysisDisplay analysis={analysis} />
                             </div>
                             <div className="xl:col-span-1">
-                              <NutritionLabel data={analysis.nutrition_label || {}} />
+                              <NutritionLabel 
+                                data={analysis.nutrition_label || {}} 
+                                onDownload={() => {
+                                  const analysisResult: AnalysisResult = {
+                                    document_id: document.document_id || '',
+                                    summary_100: analysis.summary_100_words || '',
+                                    summary_sentence: analysis.summary_one_sentence || '',
+                                    word_frequency: analysis.word_frequency || {},
+                                    measurements: analysis.measurements || {},
+                                    created_at: analysis.created_at || new Date().toISOString(),
+                                    nutrition_label: analysis.nutrition_label || {}
+                                  };
+                                  const docForPDF: Document = {
+                                    id: document.document_id || '',
+                                    url: document.url || '',
+                                    domain: document.url ? new URL(document.url).hostname : '',
+                                    document_type: (document.document_type === 'terms_of_service' ? 'tos' : 'privacy') as 'tos' | 'privacy',
+                                    title: document.title || '',
+                                    content: '',
+                                    word_count: document.word_count || 0,
+                                    sentence_count: analysis.measurements?.sentence_count || 0,
+                                    created_at: document.created_at || new Date().toISOString(),
+                                    updated_at: document.updated_at || new Date().toISOString()
+                                  };
+                                  generateDNLOnlyPDF({ analysis: analysisResult, document: docForPDF });
+                                }}
+                              />
                             </div>
                           </div>
                         )}

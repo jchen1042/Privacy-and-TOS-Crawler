@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, EyeOff, Database, Trash2, Camera, Mic, UserCheck, Globe, Clock, Target, HardDrive, Users, MapPin, Fingerprint, Activity, Wifi, UserMinus, CreditCard, ChevronDown, ChevronRight } from 'lucide-react';
+import { Shield, EyeOff, Database, Trash2, Camera, Mic, UserCheck, Globe, Clock, Target, HardDrive, Users, MapPin, Fingerprint, Activity, Wifi, UserMinus, CreditCard, ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui';
 
 interface NutritionLabelProps {
@@ -23,11 +23,11 @@ interface NutritionLabelProps {
     account_deletion_allowed?: string;
     internet_required?: string;
     includes_reccurring_charges?: string;
-  
   };
+  onDownload?: () => void;
 }
 
-const NutritionLabel: React.FC<NutritionLabelProps> = ({ data }) => {
+const NutritionLabel: React.FC<NutritionLabelProps> = ({ data, onDownload }) => {
   const [expanded, setExpanded] = React.useState({
     access: true,
     sharing: true,
@@ -72,8 +72,20 @@ const NutritionLabel: React.FC<NutritionLabelProps> = ({ data }) => {
 
   return (
     <Card className="bg-gray-900/40 border border-gray-800 rounded-[2.5rem] overflow-hidden max-w-md mx-auto font-sans shadow-2xl backdrop-blur-md">
-      <div className="bg-blue-500/5 border-b border-gray-800 p-6 text-center">
-        <h2 className="text-2xl font-bold text-white uppercase tracking-widest">Digital Nutrition Facts</h2>
+      
+      <div className="bg-blue-500/5 border-b border-gray-800 p-6 text-center relative">
+        {onDownload && (
+          <button 
+            onClick={onDownload}
+            className="absolute right-4 top-4 p-2 bg-gray-900/50 hover:bg-gray-800 rounded-lg text-gray-500 hover:text-white transition-colors outline-none"
+            title="Download DNL (PDF)"
+          >
+            <Download size={18} />
+          </button>
+        )}
+        <h2 className="text-xl sm:text-2xl font-bold text-white uppercase tracking-widest px-8">
+          Digital Nutrition Facts
+        </h2>
       </div>
       
       <CardContent className="p-6 pt-8 space-y-2">
