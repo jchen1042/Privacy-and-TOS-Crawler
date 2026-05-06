@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Clock, ArrowLeft, ChevronRight, FileDiff, Info, AlertCircle, History, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Clock, ArrowLeft, ChevronRight, FileDiff, Info, AlertCircle, History, AlertTriangle, ExternalLink, CheckCircle } from 'lucide-react';
 import { documentService } from '../services/documentService';
 import { DocumentVersion } from '../types/history';
 import Layout from '@/components/layout/Layout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, Spinner, Badge, Button, CardHeader, CardTitle } from '@/components/ui';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import DocumentDiffViewer from '@/components/analysis/DocumentDiffViewer';
 
 const DocumentHistory: React.FC = () => {
   const router = useRouter();
@@ -16,6 +17,7 @@ const DocumentHistory: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedVersionIds, setSelectedVersionIds] = useState<string[]>([]);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -87,6 +89,21 @@ const DocumentHistory: React.FC = () => {
       );
     }
 
+    const handleToggleSelection = (versionId: string) => {
+      setSelectedVersionIds(prev => {
+        if (prev.includes(versionId)) {
+          return prev.filter(id => id !== versionId);
+        }
+        if (prev.length >= 2) {
+          return [prev[1], versionId]; // Shift selection to keep exactly two
+        }
+        return [...prev, versionId];
+      });
+    };
+
+    const version1 = versions.find(v => v.id === selectedVersionIds[0]) || null;
+    const version2 = versions.find(v => v.id === selectedVersionIds[1]) || null;
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
@@ -126,6 +143,20 @@ const DocumentHistory: React.FC = () => {
             )}
           </div>
 
+          {/* Comparison Selection Controls */}
+          {versions.length > 1 && (
+            <div className="mb-6 p-4 bg-blue-900/10 border border-blue-500/20 rounded-2xl flex items-center justify-between">
+              <div className="text-sm text-gray-300">
+                <span className="font-bold text-blue-400">{selectedVersionIds.length}</span> of 2 versions selected. Click cards to select and compare.
+              </div>
+              {selectedVersionIds.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={() => setSelectedVersionIds([])} className="text-gray-400 hover:text-white">
+                  Clear Selection
+                </Button>
+              )}
+            </div>
+          )}
+
           <div className="relative border-l-2 border-gray-700 ml-4 pl-8 space-y-12">
             {versions.length === 0 ? (
               <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700">
@@ -141,10 +172,25 @@ const DocumentHistory: React.FC = () => {
                     index === 0 ? 'bg-green-500 ring-4 ring-green-500/20' : 'bg-blue-500'
                   }`} />
                   
-                  <Card className="bg-gray-800/80 backdrop-blur-sm border-gray-700 hover:border-gray-600 transition-all">
+                  <Card 
+                    className={`bg-gray-800/80 backdrop-blur-sm border-gray-700 hover:border-gray-500 transition-all cursor-pointer ${
+                      selectedVersionIds.includes(version.id) ? 'ring-2 ring-blue-500 border-transparent shadow-[0_0_15px_rgba(59,130,246,0.1)]' : ''
+                    }`}
+                    onClick={() => handleToggleSelection(version.id)}
+                  >
                     <CardContent className="p-6">
                       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-                        <div>
+                        <div className="flex items-start gap-4">
+                          <div className="mt-1">
+                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                              selectedVersionIds.includes(version.id) 
+                                ? 'bg-blue-500 border-blue-500' 
+                                : 'border-gray-600 bg-gray-900/50 hover:border-gray-400'
+                            }`}>
+                              {selectedVersionIds.includes(version.id) && <CheckCircle size={14} className="text-white" />}
+                            </div>
+                          </div>
+                          <div>
                           <div className="flex items-center gap-3 mb-2">
                             {isMounted && <span className="text-xl font-bold text-white">
                               {new Date(version.created_at).toLocaleDateString('en-US', { 
@@ -163,7 +209,7 @@ const DocumentHistory: React.FC = () => {
                           <div className="text-sm font-bold text-gray-200">{version.word_count.toLocaleString()} words</div>
                           <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Document Size</div>
                         </div>
-                      </div>
+                      </div> </div>
 
                       {/* Change Analysis Highlight */}
                       {version.change_description ? (
@@ -188,6 +234,13 @@ const DocumentHistory: React.FC = () => {
               ))
             )}
           </div>
+
+          {/* Diff Viewer Section */}
+          {versions.length > 1 && (
+            <div className="mt-20 pt-12 border-t border-gray-800">
+              <DocumentDiffViewer version1={version1} version2={version2} />
+            </div>
+          )}
         </div>
     );
   };

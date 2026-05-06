@@ -395,14 +395,14 @@ export const generatePDFReport = (data: PDFData): void => {
               doc.setFont("helvetica", "normal");
             }
 
-            doc.setFont("helvetica", "normal"); // Metric label is now normal weight
+            doc.setFont("helvetica", "normal"); 
             doc.text(displayLabel, labelX + 3, currentLabelY); // Metric label left-aligned
             doc.setFont("helvetica", "normal");
             doc.text(displayValue, labelX + labelWidth - 3, currentLabelY, { align: "right" }); // Metric value right-aligned
             
             doc.setLineWidth(0.2);
             doc.line(labelX + 2, currentLabelY + 2, labelX + labelWidth - 2, currentLabelY + 2); // Metric separator line
-            currentLabelY += 7; // More space after each metric
+            currentLabelY += 7; 
           }
         }
         currentLabelY += 4; // More space after each category block
